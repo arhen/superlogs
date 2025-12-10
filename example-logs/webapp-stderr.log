@@ -1,0 +1,29 @@
+2024-12-10 08:02:30,234 ERROR [webapp] Failed to process payment for order #12345: Connection timeout to payment gateway
+Traceback (most recent call last):
+  File "/app/services/payment.py", line 145, in process_payment
+    response = self.gateway.charge(amount, card_token)
+  File "/app/lib/gateway.py", line 89, in charge
+    return self._make_request("POST", "/charges", data)
+  File "/app/lib/gateway.py", line 45, in _make_request
+    raise ConnectionTimeoutError(f"Request timed out after {self.timeout}s")
+ConnectionTimeoutError: Request timed out after 30s
+
+2024-12-10 08:07:00,567 ERROR [webapp] Database connection lost, attempting reconnect...
+psycopg2.OperationalError: connection to server at "db.internal" (10.0.1.50), port 5432 failed: Connection refused
+	Is the server running on that host and accepting TCP/IP connections?
+
+2024-12-10 08:11:00,234 ERROR [webapp] External API call failed: https://api.thirdparty.com/v1/data - 503 Service Unavailable
+requests.exceptions.HTTPError: 503 Server Error: Service Unavailable for url: https://api.thirdparty.com/v1/data
+Response body: {"error": "Service temporarily unavailable", "retry_after": 60}
+
+2024-12-10 08:16:00,567 ERROR [webapp] Validation error on POST /api/products: missing required field 'price'
+ValidationError: {
+  "errors": [
+    {
+      "field": "price",
+      "message": "This field is required",
+      "code": "required"
+    }
+  ],
+  "request_id": "req_abc123xyz"
+}
