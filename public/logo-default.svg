@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none">
+  <!-- Default log template - Document with log lines -->
+  <path d="M14 2 L6 2 C5 2 4 3 4 4 L4 20 C4 21 5 22 6 22 L18 22 C19 22 20 21 20 20 L20 8 Z" fill="none" stroke="#928374" stroke-width="1.5"/>
+  <path d="M14 2 L14 8 L20 8" fill="none" stroke="#928374" stroke-width="1.5" stroke-linejoin="round"/>
+  <!-- Log lines -->
+  <line x1="8" y1="12" x2="16" y2="12" stroke="#928374" stroke-width="1.5" stroke-linecap="round"/>
+  <line x1="8" y1="16" x2="14" y2="16" stroke="#928374" stroke-width="1.5" stroke-linecap="round"/>
+</svg>

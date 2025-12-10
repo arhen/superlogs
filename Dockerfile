@@ -21,8 +21,7 @@ FROM oven/bun:1-slim AS runner
 WORKDIR /app
 
 # Create non-root user
-RUN addgroup --system --gid 1001 nodejs && \
-    adduser --system --uid 1001 app
+RUN useradd --system --uid 1001 --create-home app
 
 # Copy built files, server, and scripts
 COPY --from=builder /app/dist ./dist
@@ -31,8 +30,8 @@ COPY --from=builder /app/package.json ./
 COPY --from=builder /app/server.ts ./
 COPY --from=builder /app/scripts ./scripts
 
-# Create data directory for SQLite
-RUN mkdir -p /app/data && chown -R app:nodejs /app/data
+# Create data directory for SQLite and set ownership
+RUN mkdir -p /app/data && chown -R app:app /app
 
 # Set environment
 ENV NODE_ENV=production

@@ -1,0 +1,6 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none">
+  <!-- Laravel logo - simplified L shape -->
+  <path d="M4 4 L4 20 L12 20 L12 17 L7 17 L7 4 Z" fill="#ff2d20"/>
+  <!-- Accent swoosh -->
+  <path d="M10 8 Q14 6 18 10 Q20 12 18 16 L16 14 Q17 12 16 11 Q14 9 11 10 Z" fill="#ff2d20" opacity="0.8"/>
+</svg>
