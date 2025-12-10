@@ -22,9 +22,9 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select'
-import { getProjectsWithSupervisors, updateProject, createSupervisor, deleteSupervisor, detectSupervisor } from '@/server/api'
+import { getProjectsWithSupervisors, updateProject, createSupervisor, updateSupervisor, deleteSupervisor, detectSupervisor } from '@/server/api'
 import { toast } from 'sonner'
-import { ArrowLeft, Plus, Trash2, FileText, Settings, Search, RefreshCw, Server, Terminal, ChevronRight } from 'lucide-react'
+import { ArrowLeft, Plus, Trash2, FileText, Settings, Search, RefreshCw, Server, Terminal, ChevronRight, Pencil } from 'lucide-react'
 
 export const Route = createFileRoute('/projects/$projectId/')({
   component: ProjectDetailPage,
@@ -77,6 +77,14 @@ function ProjectDetailPage() {
       programs: Array<{ name: string; stdout_logfile?: string; stderr_logfile?: string }>
     }>
   >([])
+  const [editSupervisorDialogOpen, setEditSupervisorDialogOpen] = useState(false)
+  const [editingSupervisor, setEditingSupervisor] = useState<{
+    id: number
+    name: string
+    config_path: string
+    log_path: string
+    log_template: LogTemplate
+  } | null>(null)
 
   const loadProject = useCallback(async () => {
     try {
@@ -202,6 +210,44 @@ function ProjectDetailPage() {
       loadProject()
     } catch {
       toast.error('Failed to delete supervisor')
+    }
+  }
+
+  const handleEditSupervisor = (sup: Supervisor) => {
+    setEditingSupervisor({
+      id: sup.id,
+      name: sup.name,
+      config_path: sup.config_path,
+      log_path: sup.log_path || '',
+      log_template: sup.log_template || 'default',
+    })
+    setEditSupervisorDialogOpen(true)
+  }
+
+  const handleUpdateSupervisor = async () => {
+    if (!editingSupervisor || !project) return
+    if (!editingSupervisor.name.trim() || !editingSupervisor.config_path.trim()) {
+      toast.error('Name and config path are required')
+      return
+    }
+
+    try {
+      await updateSupervisor({
+        data: {
+          id: editingSupervisor.id,
+          projectId: project.id,
+          name: editingSupervisor.name,
+          configPath: editingSupervisor.config_path,
+          logPath: editingSupervisor.log_path || '/var/log/supervisor',
+          logTemplate: editingSupervisor.log_template,
+        },
+      })
+      toast.success('Supervisor updated')
+      setEditSupervisorDialogOpen(false)
+      setEditingSupervisor(null)
+      loadProject()
+    } catch {
+      toast.error('Failed to update supervisor')
     }
   }
 
@@ -462,7 +508,14 @@ function ProjectDetailPage() {
                   >
                     <FileText className="h-3.5 w-3.5 text-muted-foreground flex-shrink-0" />
                     <div className="flex-1 min-w-0">
-                      <span className="text-sm font-medium">{sup.name}</span>
+                      <div className="flex items-center gap-2">
+                        <span className="text-sm font-medium">{sup.name}</span>
+                        {sup.log_template && sup.log_template !== 'default' && (
+                          <Badge variant="secondary" className="text-[9px] px-1 py-0">
+                            {sup.log_template}
+                          </Badge>
+                        )}
+                      </div>
                       <div className="flex flex-col gap-0.5 mt-0.5">
                         <code className="text-[10px] text-muted-foreground truncate block">{sup.config_path}</code>
                         {sup.log_path && (
@@ -472,6 +525,17 @@ function ProjectDetailPage() {
                     </div>
                     <ChevronRight className="h-3 w-3 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity flex-shrink-0" />
                   </Link>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="h-6 w-6 p-0 opacity-0 group-hover:opacity-100 text-muted-foreground hover:text-foreground transition-all"
+                    onClick={(e) => {
+                      e.preventDefault()
+                      handleEditSupervisor(sup)
+                    }}
+                  >
+                    <Pencil className="h-3 w-3" />
+                  </Button>
                   <Button
                     variant="ghost"
                     size="sm"
@@ -485,6 +549,67 @@ function ProjectDetailPage() {
             </div>
           )}
         </div>
+
+        {/* Edit Supervisor Dialog */}
+        <Dialog open={editSupervisorDialogOpen} onOpenChange={setEditSupervisorDialogOpen}>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle className="text-sm">edit supervisor</DialogTitle>
+              <DialogDescription className="text-xs">update supervisor configuration</DialogDescription>
+            </DialogHeader>
+            {editingSupervisor && (
+              <div className="space-y-3 py-3">
+                <div className="space-y-1.5">
+                  <Label htmlFor="edit-sup-name" className="text-xs">name</Label>
+                  <Input
+                    id="edit-sup-name"
+                    value={editingSupervisor.name}
+                    onChange={(e) => setEditingSupervisor({ ...editingSupervisor, name: e.target.value })}
+                    className="h-8 text-xs"
+                  />
+                </div>
+                <div className="space-y-1.5">
+                  <Label htmlFor="edit-sup-config" className="text-xs">config path</Label>
+                  <Input
+                    id="edit-sup-config"
+                    value={editingSupervisor.config_path}
+                    onChange={(e) => setEditingSupervisor({ ...editingSupervisor, config_path: e.target.value })}
+                    className="h-8 text-xs"
+                  />
+                </div>
+                <div className="space-y-1.5">
+                  <Label htmlFor="edit-sup-log" className="text-xs">log path</Label>
+                  <Input
+                    id="edit-sup-log"
+                    value={editingSupervisor.log_path}
+                    onChange={(e) => setEditingSupervisor({ ...editingSupervisor, log_path: e.target.value })}
+                    className="h-8 text-xs"
+                  />
+                </div>
+                <div className="space-y-1.5">
+                  <Label htmlFor="edit-sup-template" className="text-xs">log template</Label>
+                  <Select
+                    value={editingSupervisor.log_template}
+                    onValueChange={(value) => setEditingSupervisor({ ...editingSupervisor, log_template: value as LogTemplate })}
+                  >
+                    <SelectTrigger className="h-8 text-xs">
+                      <SelectValue placeholder="select log format" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="default" className="text-xs">default</SelectItem>
+                      <SelectItem value="laravel" className="text-xs">laravel</SelectItem>
+                      <SelectItem value="fastapi" className="text-xs">fastapi / uvicorn</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+            )}
+            <DialogFooter>
+              <Button variant="ghost" size="sm" onClick={() => setEditSupervisorDialogOpen(false)} className="text-xs">cancel</Button>
+              <Button size="sm" onClick={handleUpdateSupervisor} className="text-xs">save</Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
       </div>
     </AppLayout>
   )
