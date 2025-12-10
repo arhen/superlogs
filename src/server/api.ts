@@ -5,10 +5,13 @@ import {
   detectSupervisorPaths,
   parseSupervisorConfig,
   readLogFile,
+  readLogFileFromEnd,
   tailLogFile,
   checkNewLogs,
   getLogFiles,
   type ReadLogOptions,
+  type ReadLogFromEndOptions,
+  type LogTemplate,
 } from './supervisor';
 import { z } from 'zod';
 
@@ -22,12 +25,15 @@ const updateProjectSchema = createProjectSchema.extend({
   id: z.number(),
 });
 
+const logTemplateSchema = z.enum(['default', 'laravel', 'fastapi']);
+
 const createSupervisorSchema = z.object({
   projectId: z.number(),
   name: z.string().min(1),
   configPath: z.string().min(1),
   logPath: z.string().min(1),
   errorLogPath: z.string().optional(),
+  logTemplate: logTemplateSchema.default('default'),
 });
 
 const updateSupervisorSchema = createSupervisorSchema.extend({
@@ -39,6 +45,17 @@ const logQuerySchema = z.object({
   logType: z.enum(['stdout', 'stderr']).default('stdout'),
   startLine: z.number().default(0),
   maxLines: z.number().default(500),
+  search: z.string().optional(),
+  level: z.enum(['error', 'warning', 'info', 'debug', 'all']).default('all'),
+  startDate: z.string().optional(),
+  endDate: z.string().optional(),
+});
+
+const logsFromEndSchema = z.object({
+  supervisorId: z.number(),
+  logType: z.enum(['stdout', 'stderr']).default('stdout'),
+  limit: z.number().default(500),
+  beforeLine: z.number().optional(),
   search: z.string().optional(),
   level: z.enum(['error', 'warning', 'info', 'debug', 'all']).default('all'),
   startDate: z.string().optional(),
@@ -143,7 +160,8 @@ export const createSupervisor = createServerFn({ method: 'POST' })
       data.name,
       data.configPath,
       data.logPath,
-      data.errorLogPath || null
+      data.errorLogPath || null,
+      data.logTemplate || 'default'
     );
     const lastId = db.query<{ id: number }, []>('SELECT last_insert_rowid() as id').get()!.id;
     const supervisor = supervisorQueries.getById.get(lastId);
@@ -154,7 +172,7 @@ export const updateSupervisor = createServerFn({ method: 'POST' })
   .middleware([authMiddleware])
   .inputValidator((data: z.infer<typeof updateSupervisorSchema>) => updateSupervisorSchema.parse(data))
   .handler(async ({ data }) => {
-    supervisorQueries.update.run(data.name, data.configPath, data.logPath, data.errorLogPath || null, data.id);
+    supervisorQueries.update.run(data.name, data.configPath, data.logPath, data.errorLogPath || null, data.logTemplate || 'default', data.id);
     const supervisor = supervisorQueries.getById.get(data.id);
     return { supervisor };
   });
@@ -188,6 +206,7 @@ export const getLogs = createServerFn({ method: 'GET' })
       level: data.level,
       startDate: data.startDate ? new Date(data.startDate) : undefined,
       endDate: data.endDate ? new Date(data.endDate) : undefined,
+      template: (supervisor.log_template as LogTemplate) || 'default',
     };
 
     return readLogFile(logPath, options);
@@ -207,7 +226,8 @@ export const getTailLogs = createServerFn({ method: 'GET' })
       return { entries: [] };
     }
 
-    const entries = tailLogFile(logPath, data.lines || 100);
+    const template = (supervisor.log_template as LogTemplate) || 'default';
+    const entries = tailLogFile(logPath, data.lines || 100, template);
     return { entries };
   });
 
@@ -225,7 +245,8 @@ export const checkForNewLogs = createServerFn({ method: 'GET' })
       return { newCount: 0, totalLines: 0 };
     }
 
-    return checkNewLogs(logPath, data.lastLineNumber, data.fetchEntries ?? false);
+    const template = (supervisor.log_template as LogTemplate) || 'default';
+    return checkNewLogs(logPath, data.lastLineNumber, data.fetchEntries ?? false, template);
   });
 
 export const detectSupervisor = createServerFn({ method: 'GET' })
@@ -272,4 +293,32 @@ export const getProjectsWithSupervisors = createServerFn({ method: 'GET' })
     }));
 
     return { projects: result };
+  });
+
+// Load logs from end (newest first) with pagination for infinite scroll
+export const getLogsFromEnd = createServerFn({ method: 'GET' })
+  .middleware([authMiddleware])
+  .inputValidator((data: z.infer<typeof logsFromEndSchema>) => logsFromEndSchema.parse(data))
+  .handler(async ({ data }) => {
+    const supervisor = supervisorQueries.getById.get(data.supervisorId);
+    if (!supervisor) {
+      throw new Error('Supervisor not found');
+    }
+
+    const logPath = data.logType === 'stderr' ? supervisor.error_log_path : supervisor.log_path;
+    if (!logPath) {
+      return { entries: [], totalLines: 0, hasMore: false, oldestLineLoaded: 0, newestLineLoaded: 0 };
+    }
+
+    const options: ReadLogFromEndOptions = {
+      limit: data.limit,
+      beforeLine: data.beforeLine,
+      search: data.search,
+      level: data.level,
+      startDate: data.startDate ? new Date(data.startDate) : undefined,
+      endDate: data.endDate ? new Date(data.endDate) : undefined,
+      template: (supervisor.log_template as LogTemplate) || 'default',
+    };
+
+    return readLogFileFromEnd(logPath, options);
   });

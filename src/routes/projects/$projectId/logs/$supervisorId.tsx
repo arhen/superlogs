@@ -25,7 +25,7 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
 import { Calendar } from '@/components/ui/calendar'
-import { getSupervisor, getLogs, checkForNewLogs } from '@/server/api'
+import { getSupervisor, getLogsFromEnd, checkForNewLogs } from '@/server/api'
 import { toast } from 'sonner'
 import {
   ArrowLeft,
@@ -91,9 +91,13 @@ function LogViewerPage() {
   const [newLogsCount, setNewLogsCount] = useState(0)
   const [pendingLogs, setPendingLogs] = useState<LogEntry[]>([])
   const [showConfigInfo, setShowConfigInfo] = useState(false)
+  const [hasMore, setHasMore] = useState(false)
+  const [loadingMore, setLoadingMore] = useState(false)
+  const [totalLines, setTotalLines] = useState(0)
   const scrollRef = useRef<HTMLDivElement>(null)
   const pollIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null)
   const lastLineNumberRef = useRef<number>(0)
+  const oldestLineRef = useRef<number>(0)
 
   const loadSupervisor = useCallback(async () => {
     try {
@@ -109,12 +113,11 @@ function LogViewerPage() {
     if (!supervisor) return
 
     try {
-      const result = await getLogs({
+      const result = await getLogsFromEnd({
         data: {
           supervisorId: supervisor.id,
           logType: 'stdout',
-          startLine: 0,
-          maxLines: 500,
+          limit: 500,
           search: search || undefined,
           level: levelFilter,
           startDate: startDate ? format(startDate, 'yyyy-MM-dd') : undefined,
@@ -123,12 +126,10 @@ function LogViewerPage() {
       })
       const entries = (result.entries || []) as LogEntry[]
       setLogs(entries)
-      if (entries.length > 0) {
-        const maxLineNumber = Math.max(...entries.map(e => e.lineNumber || 0))
-        lastLineNumberRef.current = maxLineNumber > 0 ? maxLineNumber : result.totalLines || entries.length
-      } else {
-        lastLineNumberRef.current = result.totalLines || 0
-      }
+      setHasMore(result.hasMore || false)
+      setTotalLines(result.totalLines || 0)
+      lastLineNumberRef.current = result.newestLineLoaded || 0
+      oldestLineRef.current = result.oldestLineLoaded || 0
       setNewLogsCount(0)
       setPendingLogs([])
       setLoading(false)
@@ -137,6 +138,38 @@ function LogViewerPage() {
       setLoading(false)
     }
   }, [supervisor, search, levelFilter, startDate, endDate])
+
+  // Load older logs when scrolling up
+  const loadOlderLogs = useCallback(async () => {
+    if (!supervisor || loadingMore || !hasMore) return
+
+    setLoadingMore(true)
+    try {
+      const result = await getLogsFromEnd({
+        data: {
+          supervisorId: supervisor.id,
+          logType: 'stdout',
+          limit: 500,
+          beforeLine: oldestLineRef.current,
+          search: search || undefined,
+          level: levelFilter,
+          startDate: startDate ? format(startDate, 'yyyy-MM-dd') : undefined,
+          endDate: endDate ? format(endDate, 'yyyy-MM-dd') : undefined,
+        },
+      })
+      const entries = (result.entries || []) as LogEntry[]
+      if (entries.length > 0) {
+        // Prepend older logs (they go at the end since we display reversed)
+        setLogs(prev => [...entries, ...prev])
+        oldestLineRef.current = result.oldestLineLoaded || 0
+      }
+      setHasMore(result.hasMore || false)
+    } catch {
+      toast.error('Failed to load more logs')
+    } finally {
+      setLoadingMore(false)
+    }
+  }, [supervisor, loadingMore, hasMore, search, levelFilter, startDate, endDate])
 
   const checkNewLogsHandler = useCallback(async () => {
     if (!supervisor) return
@@ -213,6 +246,26 @@ function LogViewerPage() {
       }
     }
   }, [hotReload, supervisor?.log_path, checkNewLogsHandler])
+
+  // Infinite scroll - load older logs when scrolling near bottom
+  // (since newest is at top, older logs are at the bottom)
+  const handleScroll = useCallback(() => {
+    if (!scrollRef.current || loadingMore || !hasMore) return
+
+    const { scrollTop, scrollHeight, clientHeight } = scrollRef.current
+    // Load more when user scrolls to within 200px of the bottom
+    if (scrollHeight - scrollTop - clientHeight < 200) {
+      loadOlderLogs()
+    }
+  }, [loadingMore, hasMore, loadOlderLogs])
+
+  useEffect(() => {
+    const scrollEl = scrollRef.current
+    if (!scrollEl) return
+
+    scrollEl.addEventListener('scroll', handleScroll)
+    return () => scrollEl.removeEventListener('scroll', handleScroll)
+  }, [handleScroll])
 
   const toggleExpand = (index: number) => {
     const newExpanded = new Set(expanded)
@@ -484,7 +537,10 @@ function LogViewerPage() {
           </div>
 
           <div className="flex items-center gap-1 ml-auto">
-            <span className="text-[11px] text-muted-foreground">{filteredLogs.length} lines</span>
+            <span className="text-[11px] text-muted-foreground">
+              {filteredLogs.length}{totalLines > 0 ? `/${totalLines}` : ''} lines
+              {hasMore && ' ...'}
+            </span>
             <Button onClick={() => loadLogs()} variant="ghost" size="sm" className="h-7 px-2">
               <RefreshCw className="h-3 w-3" />
             </Button>
@@ -533,51 +589,64 @@ function LogViewerPage() {
             </div>
           ) : (
             <div className="p-2 space-y-px">
-              {filteredLogs.map((log, index) => (
-                <div
-                  key={`${log.lineNumber}-${index}`}
-                  className={`group text-[11px] leading-relaxed hover:bg-muted/30 ${
-                    log.level === 'error' ? 'bg-destructive/5' : ''
-                  } ${log.level === 'warning' ? 'bg-warning/5' : ''}`}
-                >
-                  <button
-                    type="button"
-                    className="flex items-start gap-2 w-full text-left px-2 py-0.5"
-                    onClick={() => toggleExpand(index)}
+                {filteredLogs.map((log, index) => (
+                  <div
+                    key={`${log.lineNumber}-${index}`}
+                    className={`group text-[11px] leading-relaxed hover:bg-muted/30 ${
+                      log.level === 'error' ? 'bg-destructive/5' : ''
+                    } ${log.level === 'warning' ? 'bg-warning/5' : ''}`}
                   >
-                    {/* Line number */}
-                    <span className="text-log-line-number w-8 text-right flex-shrink-0 select-none">
-                      {log.lineNumber || index + 1}
-                    </span>
-                    {/* Timestamp */}
-                    {log.timestamp && (
-                      <span className="text-muted-foreground flex-shrink-0">
-                        {log.timestamp}
+                    <button
+                      type="button"
+                      className="flex items-start gap-2 w-full text-left px-2 py-0.5"
+                      onClick={() => toggleExpand(index)}
+                    >
+                      {/* Line number */}
+                      <span className="text-log-line-number w-8 text-right flex-shrink-0 select-none">
+                        {log.lineNumber || index + 1}
                       </span>
+                      {/* Timestamp */}
+                      {log.timestamp && (
+                        <span className="text-muted-foreground flex-shrink-0">
+                          {log.timestamp}
+                        </span>
+                      )}
+                      {/* Level */}
+                      <span className={`${getLevelColor(log.level)} flex-shrink-0 font-medium w-7`}>
+                        {getLevelPrefix(log.level)}
+                      </span>
+                      {/* Message */}
+                      <span className={`flex-1 text-foreground ${expanded.has(index) ? 'whitespace-pre-wrap' : 'truncate'}`}>
+                        {log.message || log.raw}
+                      </span>
+                      {/* Expand indicator */}
+                      <ChevronDown
+                        className={`h-3 w-3 text-muted-foreground opacity-0 group-hover:opacity-100 transition-all flex-shrink-0 ${
+                          expanded.has(index) ? 'rotate-180' : ''
+                        }`}
+                      />
+                    </button>
+                    {/* Raw output */}
+                    {expanded.has(index) && log.message !== log.raw && (
+                      <pre className="ml-12 mr-2 mb-1 p-2 bg-muted/50 text-muted-foreground text-[10px] overflow-x-auto border-l-2 border-border">
+                        {log.raw}
+                      </pre>
                     )}
-                    {/* Level */}
-                    <span className={`${getLevelColor(log.level)} flex-shrink-0 font-medium w-7`}>
-                      {getLevelPrefix(log.level)}
-                    </span>
-                    {/* Message */}
-                    <span className={`flex-1 text-foreground ${expanded.has(index) ? 'whitespace-pre-wrap' : 'truncate'}`}>
-                      {log.message || log.raw}
-                    </span>
-                    {/* Expand indicator */}
-                    <ChevronDown
-                      className={`h-3 w-3 text-muted-foreground opacity-0 group-hover:opacity-100 transition-all flex-shrink-0 ${
-                        expanded.has(index) ? 'rotate-180' : ''
-                      }`}
-                    />
-                  </button>
-                  {/* Raw output */}
-                  {expanded.has(index) && log.message !== log.raw && (
-                    <pre className="ml-12 mr-2 mb-1 p-2 bg-muted/50 text-muted-foreground text-[10px] overflow-x-auto border-l-2 border-border">
-                      {log.raw}
-                    </pre>
-                  )}
-                </div>
-              ))}
+                  </div>
+                ))}
+                {/* Loading indicator for infinite scroll */}
+                {loadingMore && (
+                  <div className="flex items-center justify-center py-3 text-muted-foreground text-xs">
+                    <RefreshCw className="h-3 w-3 animate-spin mr-2" />
+                    loading older logs...
+                  </div>
+                )}
+                {/* End of logs indicator */}
+                {!hasMore && filteredLogs.length > 0 && (
+                  <div className="text-center py-2 text-muted-foreground text-[10px]">
+                    {'// end of logs'}
+                  </div>
+                )}
             </div>
           )}
         </div>

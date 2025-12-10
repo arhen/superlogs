@@ -205,41 +205,224 @@ export interface LogEntry {
   raw: string;
 }
 
-export function parseLogLine(line: string, lineNumber: number): LogEntry {
-  const entry: LogEntry = {
-    timestamp: null,
-    level: 'info',
-    message: line,
-    lineNumber,
-    raw: line,
-  };
+export type LogTemplate = 'default' | 'laravel' | 'fastapi';
 
-  const timestampPatterns = [
-    /^(\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d+)?(?:Z|[+-]\d{2}:\d{2})?)/,
-    /^(\d{4}-\d{2}-\d{2}\s+\d{2}:\d{2}:\d{2}(?:\.\d+)?)/,
-    /^(\d{4}-\d{2}-\d{2}\s+\d{2}:\d{2}:\d{2},\d+)/,
-    /^([A-Z][a-z]{2}\s+\d{1,2}\s+\d{2}:\d{2}:\d{2})/i,
-  ];
+/**
+ * Log template parsers for different frameworks
+ */
+const logParsers: Record<LogTemplate, (line: string, lineNumber: number) => LogEntry> = {
+  /**
+   * Default parser - generic format
+   * Example: 2024-12-10 08:00:01,234 INFO [webapp] Application starting up...
+   */
+  default: (line: string, lineNumber: number): LogEntry => {
+    const entry: LogEntry = {
+      timestamp: null,
+      level: 'info',
+      message: line,
+      lineNumber,
+      raw: line,
+    };
 
-  for (const pattern of timestampPatterns) {
-    const match = line.match(pattern);
+    const timestampPatterns = [
+      /^(\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d+)?(?:Z|[+-]\d{2}:\d{2})?)/,
+      /^(\d{4}-\d{2}-\d{2}\s+\d{2}:\d{2}:\d{2}(?:\.\d+)?)/,
+      /^(\d{4}-\d{2}-\d{2}\s+\d{2}:\d{2}:\d{2},\d+)/,
+      /^([A-Z][a-z]{2}\s+\d{1,2}\s+\d{2}:\d{2}:\d{2})/i,
+    ];
+
+    for (const pattern of timestampPatterns) {
+      const match = line.match(pattern);
+      if (match) {
+        entry.timestamp = match[1];
+        entry.message = line.slice(match[0].length).trim();
+        break;
+      }
+    }
+
+    const lowerLine = line.toLowerCase();
+    if (lowerLine.includes('error') || lowerLine.includes('exception') || lowerLine.includes('fatal') || lowerLine.includes('critical')) {
+      entry.level = 'error';
+    } else if (lowerLine.includes('warn') || lowerLine.includes('warning')) {
+      entry.level = 'warning';
+    } else if (lowerLine.includes('debug') || lowerLine.includes('trace')) {
+      entry.level = 'debug';
+    }
+
+    return entry;
+  },
+
+  /**
+   * Laravel parser
+   * Example: [2024-12-10 08:00:01] production.ERROR: Something went wrong {"exception":"..."} 
+   * Example: [2024-12-10 14:30:45] local.INFO: User logged in {"user_id":123}
+   */
+  laravel: (line: string, lineNumber: number): LogEntry => {
+    const entry: LogEntry = {
+      timestamp: null,
+      level: 'info',
+      message: line,
+      lineNumber,
+      raw: line,
+    };
+
+    // Laravel format: [YYYY-MM-DD HH:MM:SS] environment.LEVEL: message {context}
+    const laravelPattern = /^\[(\d{4}-\d{2}-\d{2}\s+\d{2}:\d{2}:\d{2})\]\s+\w+\.(\w+):\s*(.*)$/;
+    const match = line.match(laravelPattern);
+
     if (match) {
       entry.timestamp = match[1];
-      entry.message = line.slice(match[0].length).trim();
-      break;
+      const levelStr = match[2].toLowerCase();
+      entry.message = match[3];
+
+      // Map Laravel levels
+      switch (levelStr) {
+        case 'emergency':
+        case 'alert':
+        case 'critical':
+        case 'error':
+          entry.level = 'error';
+          break;
+        case 'warning':
+          entry.level = 'warning';
+          break;
+        case 'notice':
+        case 'info':
+          entry.level = 'info';
+          break;
+        case 'debug':
+          entry.level = 'debug';
+          break;
+        default:
+          entry.level = 'info';
+      }
+    } else {
+      // Fallback: might be a stack trace continuation
+      const lowerLine = line.toLowerCase();
+      if (lowerLine.includes('exception') || lowerLine.includes('error') || lowerLine.includes('fatal')) {
+        entry.level = 'error';
+      } else if (lowerLine.includes('#') && /^\s*#\d+/.test(line)) {
+        // Stack trace line
+        entry.level = 'error';
+      }
     }
-  }
 
-  const lowerLine = line.toLowerCase();
-  if (lowerLine.includes('error') || lowerLine.includes('exception') || lowerLine.includes('fatal') || lowerLine.includes('critical')) {
-    entry.level = 'error';
-  } else if (lowerLine.includes('warn') || lowerLine.includes('warning')) {
-    entry.level = 'warning';
-  } else if (lowerLine.includes('debug') || lowerLine.includes('trace')) {
-    entry.level = 'debug';
-  }
+    return entry;
+  },
 
-  return entry;
+  /**
+   * FastAPI/Uvicorn parser
+   * Example: INFO:     127.0.0.1:52340 - "GET /api/health HTTP/1.1" 200 OK
+   * Example: 2024-12-10 08:00:01,234 - uvicorn.error - INFO - Application startup complete.
+   * Example: ERROR:    Exception in ASGI application
+   */
+  fastapi: (line: string, lineNumber: number): LogEntry => {
+    const entry: LogEntry = {
+      timestamp: null,
+      level: 'info',
+      message: line,
+      lineNumber,
+      raw: line,
+    };
+
+    // Uvicorn simple format: LEVEL:     message
+    const uvicornSimple = /^(INFO|WARNING|ERROR|DEBUG|CRITICAL):\s+(.*)$/i;
+    const uvicornMatch = line.match(uvicornSimple);
+
+    if (uvicornMatch) {
+      const levelStr = uvicornMatch[1].toLowerCase();
+      entry.message = uvicornMatch[2];
+
+      switch (levelStr) {
+        case 'error':
+        case 'critical':
+          entry.level = 'error';
+          break;
+        case 'warning':
+          entry.level = 'warning';
+          break;
+        case 'debug':
+          entry.level = 'debug';
+          break;
+        default:
+          entry.level = 'info';
+      }
+      return entry;
+    }
+
+    // Python logging format: YYYY-MM-DD HH:MM:SS,mmm - logger - LEVEL - message
+    const pythonLogging = /^(\d{4}-\d{2}-\d{2}\s+\d{2}:\d{2}:\d{2},\d+)\s+-\s+[\w.]+\s+-\s+(INFO|WARNING|ERROR|DEBUG|CRITICAL)\s+-\s+(.*)$/i;
+    const pythonMatch = line.match(pythonLogging);
+
+    if (pythonMatch) {
+      entry.timestamp = pythonMatch[1];
+      const levelStr = pythonMatch[2].toLowerCase();
+      entry.message = pythonMatch[3];
+
+      switch (levelStr) {
+        case 'error':
+        case 'critical':
+          entry.level = 'error';
+          break;
+        case 'warning':
+          entry.level = 'warning';
+          break;
+        case 'debug':
+          entry.level = 'debug';
+          break;
+        default:
+          entry.level = 'info';
+      }
+      return entry;
+    }
+
+    // JSON log format (common in FastAPI with structlog)
+    if (line.startsWith('{') && line.endsWith('}')) {
+      try {
+        const json = JSON.parse(line);
+        entry.timestamp = json.timestamp || json.time || json.asctime || null;
+        entry.message = json.message || json.msg || json.event || line;
+        const levelStr = (json.level || json.levelname || 'info').toLowerCase();
+        
+        switch (levelStr) {
+          case 'error':
+          case 'critical':
+          case 'fatal':
+            entry.level = 'error';
+            break;
+          case 'warning':
+          case 'warn':
+            entry.level = 'warning';
+            break;
+          case 'debug':
+            entry.level = 'debug';
+            break;
+          default:
+            entry.level = 'info';
+        }
+        return entry;
+      } catch {
+        // Not valid JSON, continue with fallback
+      }
+    }
+
+    // Fallback: detect level from content
+    const lowerLine = line.toLowerCase();
+    if (lowerLine.includes('error') || lowerLine.includes('exception') || lowerLine.includes('traceback')) {
+      entry.level = 'error';
+    } else if (lowerLine.includes('warning')) {
+      entry.level = 'warning';
+    } else if (lowerLine.includes('debug')) {
+      entry.level = 'debug';
+    }
+
+    return entry;
+  },
+};
+
+export function parseLogLine(line: string, lineNumber: number, template: LogTemplate = 'default'): LogEntry {
+  const parser = logParsers[template] || logParsers.default;
+  return parser(line, lineNumber);
 }
 
 export interface ReadLogOptions {
@@ -249,6 +432,7 @@ export interface ReadLogOptions {
   level?: 'error' | 'warning' | 'info' | 'debug' | 'all';
   startDate?: Date;
   endDate?: Date;
+  template?: LogTemplate;
 }
 
 export function readLogFile(filePath: string, options: ReadLogOptions = {}): { entries: LogEntry[]; totalLines: number; hasMore: boolean } {
@@ -259,6 +443,7 @@ export function readLogFile(filePath: string, options: ReadLogOptions = {}): { e
     level = 'all',
     startDate,
     endDate,
+    template = 'default',
   } = options;
 
   const entries: LogEntry[] = [];
@@ -278,7 +463,7 @@ export function readLogFile(filePath: string, options: ReadLogOptions = {}): { e
       const line = lines[i];
       if (!line.trim()) continue;
 
-      const entry = parseLogLine(line, i + 1);
+      const entry = parseLogLine(line, i + 1, template);
 
       if (level !== 'all' && entry.level !== level) continue;
       if (search && !line.toLowerCase().includes(search.toLowerCase())) continue;
@@ -304,7 +489,7 @@ export function readLogFile(filePath: string, options: ReadLogOptions = {}): { e
   }
 }
 
-export function tailLogFile(filePath: string, lines: number = 100): LogEntry[] {
+export function tailLogFile(filePath: string, lines: number = 100, template: LogTemplate = 'default'): LogEntry[] {
   if (!fs.existsSync(filePath)) {
     return [];
   }
@@ -314,7 +499,7 @@ export function tailLogFile(filePath: string, lines: number = 100): LogEntry[] {
     const allLines = content.split('\n').filter(l => l.trim());
     const startIndex = Math.max(0, allLines.length - lines);
 
-    return allLines.slice(startIndex).map((line, index) => parseLogLine(line, startIndex + index + 1));
+    return allLines.slice(startIndex).map((line, index) => parseLogLine(line, startIndex + index + 1, template));
   } catch {
     return [];
   }
@@ -326,7 +511,7 @@ export interface NewLogsResult {
   entries?: LogEntry[];
 }
 
-export function checkNewLogs(filePath: string, lastLineNumber: number, fetchEntries = false): NewLogsResult {
+export function checkNewLogs(filePath: string, lastLineNumber: number, fetchEntries = false, template: LogTemplate = 'default'): NewLogsResult {
   if (!fs.existsSync(filePath)) {
     return { newCount: 0, totalLines: 0 };
   }
@@ -350,12 +535,119 @@ export function checkNewLogs(filePath: string, lastLineNumber: number, fetchEntr
       if (!line.trim()) continue;
       lineIndex++;
       if (lineIndex > lastLineNumber) {
-        entries.push(parseLogLine(line, lineIndex));
+        entries.push(parseLogLine(line, lineIndex, template));
       }
     }
 
     return { newCount, totalLines, entries };
   } catch {
     return { newCount: 0, totalLines: 0 };
+  }
+}
+
+export interface ReadLogFromEndOptions {
+  limit?: number;
+  beforeLine?: number; // Load lines before this line number (for pagination)
+  search?: string;
+  level?: 'error' | 'warning' | 'info' | 'debug' | 'all';
+  startDate?: Date;
+  endDate?: Date;
+  template?: LogTemplate;
+}
+
+export interface ReadLogFromEndResult {
+  entries: LogEntry[];
+  totalLines: number;
+  hasMore: boolean;
+  oldestLineLoaded: number;
+  newestLineLoaded: number;
+}
+
+/**
+ * Read log file from the end (most recent logs first)
+ * Efficiently loads only the last N lines
+ */
+export function readLogFileFromEnd(filePath: string, options: ReadLogFromEndOptions = {}): ReadLogFromEndResult {
+  const {
+    limit = 500,
+    beforeLine,
+    search,
+    level = 'all',
+    startDate,
+    endDate,
+    template = 'default',
+  } = options;
+
+  if (!fs.existsSync(filePath)) {
+    return { entries: [], totalLines: 0, hasMore: false, oldestLineLoaded: 0, newestLineLoaded: 0 };
+  }
+
+  try {
+    const content = fs.readFileSync(filePath, 'utf-8');
+    const allLines = content.split('\n');
+    
+    // Build array of non-empty lines with their original line numbers
+    const indexedLines: { line: string; lineNumber: number }[] = [];
+    for (let i = 0; i < allLines.length; i++) {
+      const line = allLines[i];
+      if (line.trim()) {
+        indexedLines.push({ line, lineNumber: i + 1 });
+      }
+    }
+    
+    const totalLines = indexedLines.length;
+    
+    if (totalLines === 0) {
+      return { entries: [], totalLines: 0, hasMore: false, oldestLineLoaded: 0, newestLineLoaded: 0 };
+    }
+
+    // Determine the end index for loading
+    let endIndex = indexedLines.length;
+    if (beforeLine !== undefined) {
+      // Find the index of the line just before beforeLine
+      endIndex = indexedLines.findIndex(l => l.lineNumber >= beforeLine);
+      if (endIndex === -1) endIndex = indexedLines.length;
+    }
+
+    // Collect entries from the end, going backwards
+    const entries: LogEntry[] = [];
+    let oldestLineLoaded = 0;
+    let newestLineLoaded = 0;
+
+    for (let i = endIndex - 1; i >= 0 && entries.length < limit; i--) {
+      const { line, lineNumber } = indexedLines[i];
+      const entry = parseLogLine(line, lineNumber, template);
+
+      // Apply filters
+      if (level !== 'all' && entry.level !== level) continue;
+      if (search && !line.toLowerCase().includes(search.toLowerCase())) continue;
+
+      if (entry.timestamp) {
+        const entryDate = new Date(entry.timestamp);
+        if (startDate && entryDate < startDate) continue;
+        if (endDate && entryDate > endDate) continue;
+      }
+
+      entries.push(entry);
+      
+      if (newestLineLoaded === 0) newestLineLoaded = lineNumber;
+      oldestLineLoaded = lineNumber;
+    }
+
+    // Reverse to get chronological order (oldest first in the array)
+    entries.reverse();
+
+    const hasMore = oldestLineLoaded > 1 && indexedLines[0].lineNumber < oldestLineLoaded;
+
+    return {
+      entries,
+      totalLines,
+      hasMore,
+      oldestLineLoaded,
+      newestLineLoaded,
+    };
+  } catch (error) {
+    console.error(`Error reading log file ${filePath}:`, error);
+    return { entries: [], totalLines: 0, hasMore: false, oldestLineLoaded: 0, newestLineLoaded: 0 };
   }
 }

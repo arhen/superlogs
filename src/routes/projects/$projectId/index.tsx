@@ -31,12 +31,14 @@ export const Route = createFileRoute('/projects/$projectId/')({
 })
 
 type Environment = 'local' | 'development' | 'staging' | 'production'
+type LogTemplate = 'default' | 'laravel' | 'fastapi'
 
 interface Supervisor {
   id: number
   name: string
   config_path: string
   log_path: string | null
+  log_template: LogTemplate
 }
 
 interface Project {
@@ -65,6 +67,7 @@ function ProjectDetailPage() {
     name: '',
     config_path: '',
     log_path: '',
+    log_template: 'default' as LogTemplate,
   })
   const [detectedConfigs, setDetectedConfigs] = useState<
     Array<{
@@ -131,6 +134,7 @@ function ProjectDetailPage() {
           name: '',
           config_path: '',
           log_path: '',
+          log_template: 'default',
         })
         toast.success(`Found ${result.configFiles.length} config files`)
       } else if (result.configPaths.length > 0) {
@@ -160,6 +164,7 @@ function ProjectDetailPage() {
         name: '',
         config_path: config.path,
         log_path: firstProgram?.stdout_logfile || '',
+        log_template: newSupervisor.log_template,
       })
     }
   }
@@ -177,11 +182,12 @@ function ProjectDetailPage() {
           name: newSupervisor.name,
           configPath: newSupervisor.config_path,
           logPath: newSupervisor.log_path || '/var/log/supervisor',
+          logTemplate: newSupervisor.log_template,
         },
       })
       toast.success('Supervisor added')
       setSupervisorDialogOpen(false)
-      setNewSupervisor({ name: '', config_path: '', log_path: '' })
+      setNewSupervisor({ name: '', config_path: '', log_path: '', log_template: 'default' })
       loadProject()
     } catch {
       toast.error('Failed to add supervisor')
@@ -404,6 +410,25 @@ function ProjectDetailPage() {
                       placeholder="/var/log/supervisor/app-stdout.log"
                       className="h-8 text-xs"
                     />
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label htmlFor="sup-template" className="text-xs">log template</Label>
+                    <Select
+                      value={newSupervisor.log_template}
+                      onValueChange={(value) => setNewSupervisor({ ...newSupervisor, log_template: value as LogTemplate })}
+                    >
+                      <SelectTrigger className="h-8 text-xs">
+                        <SelectValue placeholder="select log format" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="default" className="text-xs">default</SelectItem>
+                        <SelectItem value="laravel" className="text-xs">laravel</SelectItem>
+                        <SelectItem value="fastapi" className="text-xs">fastapi / uvicorn</SelectItem>
+                      </SelectContent>
+                    </Select>
+                    <p className="text-[10px] text-muted-foreground">
+                      choose the log format for better parsing
+                    </p>
                   </div>
                 </div>
                 <DialogFooter>

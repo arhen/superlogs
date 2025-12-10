@@ -38,6 +38,7 @@ db.exec(`
     config_path TEXT NOT NULL,
     log_path TEXT NOT NULL,
     error_log_path TEXT,
+    log_template TEXT DEFAULT 'default',
     created_at TEXT DEFAULT CURRENT_TIMESTAMP,
     updated_at TEXT DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY (project_id) REFERENCES projects(id) ON DELETE CASCADE
@@ -61,6 +62,13 @@ db.exec(`
   CREATE INDEX IF NOT EXISTS idx_sessions_expires_at ON sessions(expires_at);
 `);
 
+// Migration: Add log_template column if it doesn't exist
+try {
+  db.exec(`ALTER TABLE supervisors ADD COLUMN log_template TEXT DEFAULT 'default'`);
+} catch {
+  // Column already exists, ignore
+}
+
 // No default user - use `bun run create-user` to create users after deployment
 
 export interface User {
@@ -80,6 +88,8 @@ export interface Project {
   updated_at: string;
 }
 
+export type LogTemplate = 'default' | 'laravel' | 'fastapi';
+
 export interface Supervisor {
   id: number;
   project_id: number;
@@ -87,6 +97,7 @@ export interface Supervisor {
   config_path: string;
   log_path: string;
   error_log_path: string | null;
+  log_template: LogTemplate;
   created_at: string;
   updated_at: string;
 }
@@ -118,8 +129,8 @@ export const supervisorQueries = {
   getAll: db.query<Supervisor, []>('SELECT * FROM supervisors ORDER BY name'),
   getByProjectId: db.query<Supervisor, [number]>('SELECT * FROM supervisors WHERE project_id = ?'),
   getById: db.query<Supervisor, [number]>('SELECT * FROM supervisors WHERE id = ?'),
-  create: db.query<void, [number, string, string, string, string | null]>('INSERT INTO supervisors (project_id, name, config_path, log_path, error_log_path) VALUES (?, ?, ?, ?, ?)'),
-  update: db.query<void, [string, string, string, string | null, number]>('UPDATE supervisors SET name = ?, config_path = ?, log_path = ?, error_log_path = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?'),
+  create: db.query<void, [number, string, string, string, string | null, string]>('INSERT INTO supervisors (project_id, name, config_path, log_path, error_log_path, log_template) VALUES (?, ?, ?, ?, ?, ?)'),
+  update: db.query<void, [string, string, string, string | null, string, number]>('UPDATE supervisors SET name = ?, config_path = ?, log_path = ?, error_log_path = ?, log_template = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?'),
   delete: db.query<void, [number]>('DELETE FROM supervisors WHERE id = ?'),
 };
 
