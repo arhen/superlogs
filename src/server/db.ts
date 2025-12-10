@@ -63,10 +63,11 @@ db.exec(`
 `);
 
 // Migration: Add log_template column if it doesn't exist
-try {
+// Check if column exists first to avoid errors
+const tableInfo = db.query<{ name: string }, []>(`PRAGMA table_info(supervisors)`).all();
+const hasLogTemplate = tableInfo.some((col: { name: string }) => col.name === 'log_template');
+if (!hasLogTemplate) {
   db.exec(`ALTER TABLE supervisors ADD COLUMN log_template TEXT DEFAULT 'default'`);
-} catch {
-  // Column already exists, ignore
 }
 
 // No default user - use `bun run create-user` to create users after deployment
