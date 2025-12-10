@@ -467,9 +467,24 @@ function ProjectDetailPage() {
                         <SelectValue placeholder="select log format" />
                       </SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="default" className="text-xs">default</SelectItem>
-                        <SelectItem value="laravel" className="text-xs">laravel</SelectItem>
-                        <SelectItem value="fastapi" className="text-xs">fastapi / uvicorn</SelectItem>
+                        <SelectItem value="default" className="text-xs">
+                          <span className="flex items-center gap-2">
+                            <img src="/logo-default.svg" alt="" className="h-4 w-4" />
+                            default
+                          </span>
+                        </SelectItem>
+                        <SelectItem value="laravel" className="text-xs">
+                          <span className="flex items-center gap-2">
+                            <img src="/logo-laravel.svg" alt="" className="h-4 w-4" />
+                            laravel
+                          </span>
+                        </SelectItem>
+                        <SelectItem value="fastapi" className="text-xs">
+                          <span className="flex items-center gap-2">
+                            <img src="/logo-fastapi.svg" alt="" className="h-4 w-4" />
+                            fastapi / uvicorn
+                          </span>
+                        </SelectItem>
                       </SelectContent>
                     </Select>
                     <p className="text-[10px] text-muted-foreground">
@@ -596,9 +611,24 @@ function ProjectDetailPage() {
                       <SelectValue placeholder="select log format" />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="default" className="text-xs">default</SelectItem>
-                      <SelectItem value="laravel" className="text-xs">laravel</SelectItem>
-                      <SelectItem value="fastapi" className="text-xs">fastapi / uvicorn</SelectItem>
+                      <SelectItem value="default" className="text-xs">
+                        <span className="flex items-center gap-2">
+                          <img src="/logo-default.svg" alt="" className="h-4 w-4" />
+                          default
+                        </span>
+                      </SelectItem>
+                      <SelectItem value="laravel" className="text-xs">
+                        <span className="flex items-center gap-2">
+                          <img src="/logo-laravel.svg" alt="" className="h-4 w-4" />
+                          laravel
+                        </span>
+                      </SelectItem>
+                      <SelectItem value="fastapi" className="text-xs">
+                        <span className="flex items-center gap-2">
+                          <img src="/logo-fastapi.svg" alt="" className="h-4 w-4" />
+                          fastapi / uvicorn
+                        </span>
+                      </SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
