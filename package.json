@@ -6,7 +6,7 @@
     "dev": "bun --bun vite dev",
     "build": "bun --bun vite build",
     "preview": "bun --bun vite preview",
-    "start": "bun .output/server/index.mjs",
+    "start": "bun run server.ts",
     "create-user": "bun run scripts/create-user.ts",
     "test": "vitest run"
   },

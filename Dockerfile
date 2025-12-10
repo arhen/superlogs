@@ -24,10 +24,11 @@ WORKDIR /app
 RUN addgroup --system --gid 1001 nodejs && \
     adduser --system --uid 1001 app
 
-# Copy built files and scripts
-COPY --from=builder /app/.output ./.output
+# Copy built files, server, and scripts
+COPY --from=builder /app/dist ./dist
 COPY --from=builder /app/node_modules ./node_modules
 COPY --from=builder /app/package.json ./
+COPY --from=builder /app/server.ts ./
 COPY --from=builder /app/scripts ./scripts
 
 # Create data directory for SQLite
