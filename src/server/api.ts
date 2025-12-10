@@ -1,5 +1,5 @@
 import { createServerFn } from '@tanstack/react-start';
-import { db, projectQueries, supervisorQueries, configQueries } from './db';
+import { getDatabase, projectQueries, supervisorQueries, configQueries } from './db';
 import { authMiddleware } from './auth';
 import {
   detectSupervisorPaths,
@@ -86,7 +86,7 @@ export const createProject = createServerFn({ method: 'POST' })
   .inputValidator((data: z.infer<typeof createProjectSchema>) => createProjectSchema.parse(data))
   .handler(async ({ data }) => {
     projectQueries.create.run(data.name, data.description || null, data.environment);
-    const lastId = db.query<{ id: number }, []>('SELECT last_insert_rowid() as id').get()!.id;
+    const lastId = getDatabase().query<{ id: number }, []>('SELECT last_insert_rowid() as id').get()!.id;
     const project = projectQueries.getById.get(lastId);
     return { project };
   });
@@ -163,7 +163,7 @@ export const createSupervisor = createServerFn({ method: 'POST' })
       data.errorLogPath || null,
       data.logTemplate || 'default'
     );
-    const lastId = db.query<{ id: number }, []>('SELECT last_insert_rowid() as id').get()!.id;
+    const lastId = getDatabase().query<{ id: number }, []>('SELECT last_insert_rowid() as id').get()!.id;
     const supervisor = supervisorQueries.getById.get(lastId);
     return { supervisor };
   });
