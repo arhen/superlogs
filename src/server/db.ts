@@ -10,16 +10,18 @@ if (!fs.existsSync(dataDir)) {
   fs.mkdirSync(dataDir, { recursive: true });
 }
 
-// Database singleton - lazy initialization
-let _db: Database | null = null;
+// Use globalThis to ensure singleton across bundler chunks
+const GLOBAL_DB_KEY = '__superlogs_db__';
 
 function getDb(): Database {
-  if (!_db) {
-    _db = new Database(DB_PATH);
-    _db.exec('PRAGMA foreign_keys = ON');
-    initializeSchema(_db);
+  // Check if already initialized in global scope
+  if (!(globalThis as Record<string, unknown>)[GLOBAL_DB_KEY]) {
+    const db = new Database(DB_PATH);
+    db.exec('PRAGMA foreign_keys = ON');
+    initializeSchema(db);
+    (globalThis as Record<string, unknown>)[GLOBAL_DB_KEY] = db;
   }
-  return _db;
+  return (globalThis as Record<string, unknown>)[GLOBAL_DB_KEY] as Database;
 }
 
 function initializeSchema(db: Database) {
@@ -125,7 +127,7 @@ export interface Session {
   created_at: string;
 }
 
-// Query helpers - all use lazy db access
+// Query helpers - all use lazy db access via getDb()
 export const userQueries = {
   get getByUsername() { return getDb().query<User, [string]>('SELECT * FROM users WHERE username = ?'); },
   get getById() { return getDb().query<User, [number]>('SELECT * FROM users WHERE id = ?'); },
