@@ -197,7 +197,12 @@ function HomePage() {
         {loading ? (
           <div className="flex items-center justify-center flex-1">
             <div className="text-primary text-xs">
-              <span className="animate-pulse">_</span> loading...
+              <span className="animate-pulse">_</span> loading
+              <span className="loading-dots">
+                <span className="dot">.</span>
+                <span className="dot">.</span>
+                <span className="dot">.</span>
+              </span>
             </div>
           </div>
         ) : projects.length === 0 ? (

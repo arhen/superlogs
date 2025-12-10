@@ -76,8 +76,13 @@ export function AppLayout({ children }: AppLayoutProps) {
   if (!user) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-background">
-        <div className="text-primary">
-          <span className="animate-pulse">_</span> loading...
+        <div className="text-primary text-xs">
+          <span className="animate-pulse">_</span> loading
+          <span className="loading-dots">
+            <span className="dot">.</span>
+            <span className="dot">.</span>
+            <span className="dot">.</span>
+          </span>
         </div>
       </div>
     )

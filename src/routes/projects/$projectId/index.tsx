@@ -266,7 +266,12 @@ function ProjectDetailPage() {
       <AppLayout>
         <div className="flex items-center justify-center py-12">
           <div className="text-primary text-xs">
-            <span className="animate-pulse">_</span> loading...
+            <span className="animate-pulse">_</span> loading
+            <span className="loading-dots">
+              <span className="dot">.</span>
+              <span className="dot">.</span>
+              <span className="dot">.</span>
+            </span>
           </div>
         </div>
       </AppLayout>
