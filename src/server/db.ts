@@ -109,42 +109,42 @@ export interface Session {
   created_at: string;
 }
 
-// Now we can safely prepare queries since tables exist
+// Lazy query initialization using getters to avoid circular dependency issues
 export const userQueries = {
-  getByUsername: db.query<User, [string]>('SELECT * FROM users WHERE username = ?'),
-  getById: db.query<User, [number]>('SELECT * FROM users WHERE id = ?'),
-  create: db.query<void, [string, string]>('INSERT INTO users (username, password_hash) VALUES (?, ?)'),
-  updatePassword: db.query<void, [string, number]>('UPDATE users SET password_hash = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?'),
+  get getByUsername() { return db.query<User, [string]>('SELECT * FROM users WHERE username = ?'); },
+  get getById() { return db.query<User, [number]>('SELECT * FROM users WHERE id = ?'); },
+  get create() { return db.query<void, [string, string]>('INSERT INTO users (username, password_hash) VALUES (?, ?)'); },
+  get updatePassword() { return db.query<void, [string, number]>('UPDATE users SET password_hash = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?'); },
 };
 
 export const projectQueries = {
-  getAll: db.query<Project, []>('SELECT * FROM projects ORDER BY name'),
-  getById: db.query<Project, [number]>('SELECT * FROM projects WHERE id = ?'),
-  create: db.query<void, [string, string | null, string]>('INSERT INTO projects (name, description, environment) VALUES (?, ?, ?)'),
-  update: db.query<void, [string, string | null, string, number]>('UPDATE projects SET name = ?, description = ?, environment = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?'),
-  delete: db.query<void, [number]>('DELETE FROM projects WHERE id = ?'),
+  get getAll() { return db.query<Project, []>('SELECT * FROM projects ORDER BY name'); },
+  get getById() { return db.query<Project, [number]>('SELECT * FROM projects WHERE id = ?'); },
+  get create() { return db.query<void, [string, string | null, string]>('INSERT INTO projects (name, description, environment) VALUES (?, ?, ?)'); },
+  get update() { return db.query<void, [string, string | null, string, number]>('UPDATE projects SET name = ?, description = ?, environment = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?'); },
+  get delete() { return db.query<void, [number]>('DELETE FROM projects WHERE id = ?'); },
 };
 
 export const supervisorQueries = {
-  getAll: db.query<Supervisor, []>('SELECT * FROM supervisors ORDER BY name'),
-  getByProjectId: db.query<Supervisor, [number]>('SELECT * FROM supervisors WHERE project_id = ?'),
-  getById: db.query<Supervisor, [number]>('SELECT * FROM supervisors WHERE id = ?'),
-  create: db.query<void, [number, string, string, string, string | null, string]>('INSERT INTO supervisors (project_id, name, config_path, log_path, error_log_path, log_template) VALUES (?, ?, ?, ?, ?, ?)'),
-  update: db.query<void, [string, string, string, string | null, string, number]>('UPDATE supervisors SET name = ?, config_path = ?, log_path = ?, error_log_path = ?, log_template = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?'),
-  delete: db.query<void, [number]>('DELETE FROM supervisors WHERE id = ?'),
+  get getAll() { return db.query<Supervisor, []>('SELECT * FROM supervisors ORDER BY name'); },
+  get getByProjectId() { return db.query<Supervisor, [number]>('SELECT * FROM supervisors WHERE project_id = ?'); },
+  get getById() { return db.query<Supervisor, [number]>('SELECT * FROM supervisors WHERE id = ?'); },
+  get create() { return db.query<void, [number, string, string, string, string | null, string]>('INSERT INTO supervisors (project_id, name, config_path, log_path, error_log_path, log_template) VALUES (?, ?, ?, ?, ?, ?)'); },
+  get update() { return db.query<void, [string, string, string, string | null, string, number]>('UPDATE supervisors SET name = ?, config_path = ?, log_path = ?, error_log_path = ?, log_template = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?'); },
+  get delete() { return db.query<void, [number]>('DELETE FROM supervisors WHERE id = ?'); },
 };
 
 export const sessionQueries = {
-  getById: db.query<Session, [string]>('SELECT * FROM sessions WHERE id = ?'),
-  getValidById: db.query<Session, [string]>('SELECT * FROM sessions WHERE id = ? AND expires_at > datetime("now")'),
-  create: db.query<void, [string, number, string]>('INSERT INTO sessions (id, user_id, expires_at) VALUES (?, ?, ?)'),
-  delete: db.query<void, [string]>('DELETE FROM sessions WHERE id = ?'),
-  deleteExpired: db.query<void, []>('DELETE FROM sessions WHERE expires_at <= datetime("now")'),
-  deleteByUserId: db.query<void, [number]>('DELETE FROM sessions WHERE user_id = ?'),
+  get getById() { return db.query<Session, [string]>('SELECT * FROM sessions WHERE id = ?'); },
+  get getValidById() { return db.query<Session, [string]>('SELECT * FROM sessions WHERE id = ? AND expires_at > datetime("now")'); },
+  get create() { return db.query<void, [string, number, string]>('INSERT INTO sessions (id, user_id, expires_at) VALUES (?, ?, ?)'); },
+  get delete() { return db.query<void, [string]>('DELETE FROM sessions WHERE id = ?'); },
+  get deleteExpired() { return db.query<void, []>('DELETE FROM sessions WHERE expires_at <= datetime("now")'); },
+  get deleteByUserId() { return db.query<void, [number]>('DELETE FROM sessions WHERE user_id = ?'); },
 };
 
 export const configQueries = {
-  get: db.query<{ key: string; value: string }, [string]>('SELECT * FROM config WHERE key = ?'),
-  set: db.query<void, [string, string]>('INSERT OR REPLACE INTO config (key, value) VALUES (?, ?)'),
-  delete: db.query<void, [string]>('DELETE FROM config WHERE key = ?'),
+  get get() { return db.query<{ key: string; value: string }, [string]>('SELECT * FROM config WHERE key = ?'); },
+  get set() { return db.query<void, [string, string]>('INSERT OR REPLACE INTO config (key, value) VALUES (?, ?)'); },
+  get delete() { return db.query<void, [string]>('DELETE FROM config WHERE key = ?'); },
 };
