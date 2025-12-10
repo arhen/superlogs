@@ -2,12 +2,10 @@ import { createFileRoute, Link } from '@tanstack/react-router'
 import { useState, useEffect, useRef, useCallback } from 'react'
 import { AppLayout } from '@/components/AppLayout'
 import { Button } from '@/components/ui/button'
-import { Card, CardContent } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Switch } from '@/components/ui/switch'
-import { ScrollArea } from '@/components/ui/scroll-area'
 import {
   Select,
   SelectContent,
@@ -32,19 +30,15 @@ import { toast } from 'sonner'
 import {
   ArrowLeft,
   Search,
-  Filter,
   Calendar as CalendarIcon,
   RefreshCw,
-  AlertCircle,
-  AlertTriangle,
   Bell,
   FileCode,
   ChevronRight,
-  Info,
-  Bug,
   ChevronDown,
-  ChevronUp,
   Download,
+  Terminal,
+  Zap,
 } from 'lucide-react'
 import { format } from 'date-fns'
 
@@ -96,14 +90,14 @@ function LogViewerPage() {
   const [expanded, setExpanded] = useState<Set<number>>(new Set())
   const [newLogsCount, setNewLogsCount] = useState(0)
   const [pendingLogs, setPendingLogs] = useState<LogEntry[]>([])
-  const [showConfigInfo, setShowConfigInfo] = useState(true)
+  const [showConfigInfo, setShowConfigInfo] = useState(false)
   const scrollRef = useRef<HTMLDivElement>(null)
   const pollIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null)
   const lastLineNumberRef = useRef<number>(0)
 
   const loadSupervisor = useCallback(async () => {
     try {
-      const result = await getSupervisor({ data: { id: parseInt(supervisorId) } })
+      const result = await getSupervisor({ data: { id: parseInt(supervisorId, 10) } })
       setSupervisor(result.supervisor as Supervisor)
       setConfigInfo(result.configInfo as ConfigInfo | null)
     } catch {
@@ -129,14 +123,12 @@ function LogViewerPage() {
       })
       const entries = (result.entries || []) as LogEntry[]
       setLogs(entries)
-      // Track the last line number for tailing
       if (entries.length > 0) {
         const maxLineNumber = Math.max(...entries.map(e => e.lineNumber || 0))
         lastLineNumberRef.current = maxLineNumber > 0 ? maxLineNumber : result.totalLines || entries.length
       } else {
         lastLineNumberRef.current = result.totalLines || 0
       }
-      // Clear any pending new logs notification
       setNewLogsCount(0)
       setPendingLogs([])
       setLoading(false)
@@ -172,14 +164,12 @@ function LogViewerPage() {
   const loadNewLogs = useCallback(() => {
     if (pendingLogs.length > 0) {
       setLogs(prev => [...prev, ...pendingLogs])
-      // Update last line number
       const maxLineNumber = Math.max(...pendingLogs.map(e => e.lineNumber || 0))
       if (maxLineNumber > lastLineNumberRef.current) {
         lastLineNumberRef.current = maxLineNumber
       }
       setNewLogsCount(0)
       setPendingLogs([])
-      // Auto scroll to top if enabled (since logs are displayed newest-first)
       if (autoScroll && scrollRef.current) {
         setTimeout(() => {
           if (scrollRef.current) {
@@ -203,13 +193,12 @@ function LogViewerPage() {
   // biome-ignore lint/correctness/useExhaustiveDependencies: scroll on log changes
   useEffect(() => {
     if (autoScroll && scrollRef.current) {
-      scrollRef.current.scrollTop = 0 // Scroll to top since newest logs are first
+      scrollRef.current.scrollTop = 0
     }
   }, [autoScroll, logs])
 
   useEffect(() => {
     if (hotReload && supervisor?.log_path) {
-      // Poll for new logs every 2 seconds
       pollIntervalRef.current = setInterval(() => {
         checkNewLogsHandler()
       }, 2000)
@@ -235,34 +224,34 @@ function LogViewerPage() {
     setExpanded(newExpanded)
   }
 
-  const getLevelIcon = (level: LogEntry['level']) => {
+  const getLevelColor = (level: LogEntry['level']) => {
     switch (level) {
       case 'error':
-        return <AlertCircle className="h-4 w-4 text-red-500" />
+        return 'log-error'
       case 'warning':
-        return <AlertTriangle className="h-4 w-4 text-yellow-500" />
+        return 'log-warning'
       case 'info':
-        return <Info className="h-4 w-4 text-blue-500" />
+        return 'log-info'
       case 'debug':
-        return <Bug className="h-4 w-4 text-gray-500" />
+        return 'log-debug'
     }
   }
 
-  const getLevelBadgeColor = (level: LogEntry['level']) => {
+  const getLevelPrefix = (level: LogEntry['level']) => {
     switch (level) {
       case 'error':
-        return 'bg-red-500'
+        return 'ERR'
       case 'warning':
-        return 'bg-yellow-500'
+        return 'WRN'
       case 'info':
-        return 'bg-blue-500'
+        return 'INF'
       case 'debug':
-        return 'bg-gray-500'
+        return 'DBG'
     }
   }
 
   const filteredLogs = [...logs]
-    .reverse() // Show newest logs first
+    .reverse()
     .filter((log) => {
       if (levelFilter !== 'all' && log.level !== levelFilter) return false
       if (search && !log.raw.toLowerCase().includes(search.toLowerCase())) return false
@@ -319,7 +308,9 @@ function LogViewerPage() {
     return (
       <AppLayout>
         <div className="flex items-center justify-center py-12">
-          <div className="animate-pulse text-muted-foreground">Loading logs...</div>
+          <div className="text-primary">
+            <span className="animate-pulse">_</span> loading logs...
+          </div>
         </div>
       </AppLayout>
     )
@@ -329,9 +320,9 @@ function LogViewerPage() {
     return (
       <AppLayout>
         <div className="text-center py-12">
-          <h2 className="text-xl font-medium mb-2">Supervisor not found</h2>
+          <p className="text-muted-foreground mb-4">supervisor not found</p>
           <Link to="/projects/$projectId" params={{ projectId }}>
-            <Button variant="link">Back to project</Button>
+            <Button variant="ghost" size="sm">back to project</Button>
           </Link>
         </div>
       </AppLayout>
@@ -340,289 +331,256 @@ function LogViewerPage() {
 
   return (
     <AppLayout>
-      <div className="space-y-4 h-full flex flex-col">
-        <div className="flex items-center gap-4">
+      <div className="h-full flex flex-col gap-3 overflow-hidden">
+        {/* Header */}
+        <div className="flex items-center gap-3 flex-shrink-0">
           <Link to="/projects/$projectId" params={{ projectId }}>
-            <Button variant="ghost" size="icon">
-              <ArrowLeft className="h-5 w-5" />
+            <Button variant="ghost" size="sm" className="h-7 w-7 p-0">
+              <ArrowLeft className="h-3.5 w-3.5" />
             </Button>
           </Link>
-          <div className="flex-1">
-            <h1 className="text-2xl font-bold">{supervisor.name}</h1>
-            <p className="text-sm text-muted-foreground font-mono">{supervisor.log_path}</p>
-          </div>
-          <div className="flex items-center gap-4">
+          <div className="flex-1 min-w-0">
             <div className="flex items-center gap-2">
+              <Terminal className="h-3.5 w-3.5 text-primary" />
+              <h1 className="text-sm font-medium truncate">{supervisor.name}</h1>
+              {hotReload && (
+                <Badge variant="success" className="text-[10px] px-1.5 py-0">
+                  <Zap className="h-2.5 w-2.5 mr-0.5" />
+                  live
+                </Badge>
+              )}
+            </div>
+            <p className="text-[11px] text-muted-foreground truncate">{supervisor.log_path}</p>
+          </div>
+          <div className="flex items-center gap-3">
+            <div className="flex items-center gap-1.5">
               <Switch
                 id="hot-reload"
                 checked={hotReload}
                 onCheckedChange={setHotReload}
+                className="scale-75"
               />
-              <Label htmlFor="hot-reload" className="flex items-center gap-1 text-sm">
-                <RefreshCw className={`h-4 w-4 ${hotReload ? 'animate-spin text-primary' : ''}`} />
-                Hot Reload
+              <Label htmlFor="hot-reload" className="text-[11px] text-muted-foreground cursor-pointer">
+                tail -f
               </Label>
             </div>
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-1.5">
               <Switch
                 id="auto-scroll"
                 checked={autoScroll}
                 onCheckedChange={setAutoScroll}
+                className="scale-75"
               />
-              <Label htmlFor="auto-scroll" className="text-sm">Auto-scroll</Label>
+              <Label htmlFor="auto-scroll" className="text-[11px] text-muted-foreground cursor-pointer">
+                scroll
+              </Label>
             </div>
           </div>
         </div>
 
+        {/* Config Info Panel */}
         {configInfo && (
-          <Card className="bg-muted/30">
-            <CardContent className="p-4">
-              <button
-                type="button"
-                className="flex items-center gap-2 w-full text-left"
-                onClick={() => setShowConfigInfo(!showConfigInfo)}
-              >
-                <ChevronRight className={`h-4 w-4 transition-transform ${showConfigInfo ? 'rotate-90' : ''}`} />
-                <FileCode className="h-4 w-4 text-muted-foreground" />
-                <span className="font-medium text-sm">Supervisor Config Info</span>
-                <Badge variant="secondary" className="ml-2">{configInfo.programName}</Badge>
-              </button>
-              {showConfigInfo && (
-                <div className="mt-3 pl-6 space-y-2 text-sm">
-                  <div className="grid grid-cols-[120px_1fr] gap-2">
-                    <span className="text-muted-foreground">Program:</span>
-                    <code className="font-mono text-xs bg-muted px-1.5 py-0.5 rounded">{configInfo.programName}</code>
-                  </div>
-                  <div className="grid grid-cols-[120px_1fr] gap-2">
-                    <span className="text-muted-foreground">Command:</span>
-                    <code className="font-mono text-xs bg-muted px-1.5 py-0.5 rounded break-all">{configInfo.command}</code>
-                  </div>
-                  {configInfo.directory && (
-                    <div className="grid grid-cols-[120px_1fr] gap-2">
-                      <span className="text-muted-foreground">Directory:</span>
-                      <code className="font-mono text-xs bg-muted px-1.5 py-0.5 rounded">{configInfo.directory}</code>
-                    </div>
-                  )}
-                  {configInfo.numprocs && configInfo.numprocs > 1 && (
-                    <div className="grid grid-cols-[120px_1fr] gap-2">
-                      <span className="text-muted-foreground">Processes:</span>
-                      <span>{configInfo.numprocs}</span>
-                    </div>
-                  )}
-                  <div className="grid grid-cols-[120px_1fr] gap-2">
-                    <span className="text-muted-foreground">Auto-start:</span>
-                    <Badge variant={configInfo.autostart ? 'default' : 'secondary'} className="w-fit">
-                      {configInfo.autostart ? 'Yes' : 'No'}
-                    </Badge>
-                  </div>
-                  <div className="grid grid-cols-[120px_1fr] gap-2">
-                    <span className="text-muted-foreground">Auto-restart:</span>
-                    <Badge variant={configInfo.autorestart ? 'default' : 'secondary'} className="w-fit">
-                      {configInfo.autorestart ? 'Yes' : 'No'}
-                    </Badge>
-                  </div>
-                  {configInfo.stdoutLogfile && (
-                    <div className="grid grid-cols-[120px_1fr] gap-2">
-                      <span className="text-muted-foreground">Stdout Log:</span>
-                      <code className="font-mono text-xs bg-muted px-1.5 py-0.5 rounded break-all">{configInfo.stdoutLogfile}</code>
-                    </div>
-                  )}
-                  {configInfo.stderrLogfile && (
-                    <div className="grid grid-cols-[120px_1fr] gap-2">
-                      <span className="text-muted-foreground">Stderr Log:</span>
-                      <code className="font-mono text-xs bg-muted px-1.5 py-0.5 rounded break-all">{configInfo.stderrLogfile}</code>
-                    </div>
-                  )}
+          <div className="border border-border bg-card/50 flex-shrink-0">
+            <button
+              type="button"
+              className="flex items-center gap-2 w-full px-3 py-2 text-left hover:bg-muted/30 transition-colors"
+              onClick={() => setShowConfigInfo(!showConfigInfo)}
+            >
+              <ChevronRight className={`h-3 w-3 text-muted-foreground transition-transform ${showConfigInfo ? 'rotate-90' : ''}`} />
+              <FileCode className="h-3 w-3 text-muted-foreground" />
+              <span className="text-[11px] text-muted-foreground">config</span>
+              <code className="text-[11px] text-primary">{configInfo.programName}</code>
+            </button>
+            {showConfigInfo && (
+              <div className="px-3 pb-3 pt-1 space-y-1 text-[11px] border-t border-border">
+                <div className="flex gap-2">
+                  <span className="text-muted-foreground w-16">cmd:</span>
+                  <code className="text-foreground break-all">{configInfo.command}</code>
                 </div>
-              )}
-            </CardContent>
-          </Card>
+                {configInfo.directory && (
+                  <div className="flex gap-2">
+                    <span className="text-muted-foreground w-16">dir:</span>
+                    <code className="text-foreground">{configInfo.directory}</code>
+                  </div>
+                )}
+                <div className="flex gap-2">
+                  <span className="text-muted-foreground w-16">autostart:</span>
+                  <span className={configInfo.autostart ? 'text-green-400' : 'text-zinc-500'}>
+                    {configInfo.autostart ? 'true' : 'false'}
+                  </span>
+                </div>
+                <div className="flex gap-2">
+                  <span className="text-muted-foreground w-16">restart:</span>
+                  <span className={configInfo.autorestart ? 'text-green-400' : 'text-zinc-500'}>
+                    {configInfo.autorestart ? 'true' : 'false'}
+                  </span>
+                </div>
+              </div>
+            )}
+          </div>
         )}
 
-        <Card>
-          <CardContent className="p-4">
-            <div className="flex flex-wrap gap-4">
-              <div className="flex-1 min-w-[200px]">
-                <div className="relative">
-                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                  <Input
-                    placeholder="Search logs..."
-                    value={search}
-                    onChange={(e) => setSearch(e.target.value)}
-                    className="pl-9"
-                  />
-                </div>
-              </div>
+        {/* Filters */}
+        <div className="flex flex-wrap items-center gap-2 pb-2 border-b border-border flex-shrink-0">
+          <div className="relative flex-1 min-w-[180px] max-w-[280px]">
+            <Search className="absolute left-2 top-1/2 -translate-y-1/2 h-3 w-3 text-muted-foreground" />
+            <Input
+              placeholder="grep..."
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              className="pl-7 h-7 text-xs"
+            />
+          </div>
 
-              <div className="flex items-center gap-2">
-                <Filter className="h-4 w-4 text-muted-foreground" />
-                <Select value={levelFilter} onValueChange={(v) => setLevelFilter(v as LogLevel)}>
-                  <SelectTrigger className="w-[130px]">
-                    <SelectValue placeholder="Log level" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="all">All Levels</SelectItem>
-                    <SelectItem value="error">Error</SelectItem>
-                    <SelectItem value="warning">Warning</SelectItem>
-                    <SelectItem value="info">Info</SelectItem>
-                    <SelectItem value="debug">Debug</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
+          <Select value={levelFilter} onValueChange={(v) => setLevelFilter(v as LogLevel)}>
+            <SelectTrigger className="w-[100px] h-7 text-xs">
+              <SelectValue placeholder="level" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all" className="text-xs">all</SelectItem>
+              <SelectItem value="error" className="text-xs log-error">error</SelectItem>
+              <SelectItem value="warning" className="text-xs log-warning">warning</SelectItem>
+              <SelectItem value="info" className="text-xs log-info">info</SelectItem>
+              <SelectItem value="debug" className="text-xs log-debug">debug</SelectItem>
+            </SelectContent>
+          </Select>
 
-              <div className="flex items-center gap-2">
-                <CalendarIcon className="h-4 w-4 text-muted-foreground" />
-                <Popover>
-                  <PopoverTrigger asChild>
-                    <Button variant="outline" size="sm">
-                      {startDate ? format(startDate, 'MMM d') : 'Start'}
-                    </Button>
-                  </PopoverTrigger>
-                  <PopoverContent className="w-auto p-0" align="start">
-                    <Calendar
-                      mode="single"
-                      selected={startDate}
-                      onSelect={setStartDate}
-                    />
-                  </PopoverContent>
-                </Popover>
-                <span className="text-muted-foreground">-</span>
-                <Popover>
-                  <PopoverTrigger asChild>
-                    <Button variant="outline" size="sm">
-                      {endDate ? format(endDate, 'MMM d') : 'End'}
-                    </Button>
-                  </PopoverTrigger>
-                  <PopoverContent className="w-auto p-0" align="start">
-                    <Calendar
-                      mode="single"
-                      selected={endDate}
-                      onSelect={setEndDate}
-                    />
-                  </PopoverContent>
-                </Popover>
-                {(startDate || endDate) && (
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={() => {
-                      setStartDate(undefined)
-                      setEndDate(undefined)
-                    }}
-                  >
-                    Clear
-                  </Button>
-                )}
-              </div>
-
-              <Button onClick={() => loadLogs()} variant="outline" size="sm">
-                <RefreshCw className="h-4 w-4 mr-2" />
-                Refresh
+          <div className="flex items-center gap-1">
+            <Popover>
+              <PopoverTrigger asChild>
+                <Button variant="ghost" size="sm" className="h-7 text-xs px-2">
+                  <CalendarIcon className="h-3 w-3 mr-1" />
+                  {startDate ? format(startDate, 'MM/dd') : 'from'}
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent className="w-auto p-0" align="start">
+                <Calendar mode="single" selected={startDate} onSelect={setStartDate} />
+              </PopoverContent>
+            </Popover>
+            <span className="text-muted-foreground text-xs">-</span>
+            <Popover>
+              <PopoverTrigger asChild>
+                <Button variant="ghost" size="sm" className="h-7 text-xs px-2">
+                  {endDate ? format(endDate, 'MM/dd') : 'to'}
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent className="w-auto p-0" align="start">
+                <Calendar mode="single" selected={endDate} onSelect={setEndDate} />
+              </PopoverContent>
+            </Popover>
+            {(startDate || endDate) && (
+              <Button
+                variant="ghost"
+                size="sm"
+                className="h-7 text-xs px-2 text-muted-foreground"
+                onClick={() => {
+                  setStartDate(undefined)
+                  setEndDate(undefined)
+                }}
+              >
+                clear
               </Button>
+            )}
+          </div>
 
-              <DropdownMenu>
-                <DropdownMenuTrigger asChild>
-                  <Button variant="outline" size="sm">
-                    <Download className="h-4 w-4 mr-2" />
-                    Export
-                  </Button>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent>
-                  <DropdownMenuItem onClick={() => exportLogs('txt')}>
-                    Export as TXT
-                  </DropdownMenuItem>
-                  <DropdownMenuItem onClick={() => exportLogs('json')}>
-                    Export as JSON
-                  </DropdownMenuItem>
-                  <DropdownMenuItem onClick={() => exportLogs('csv')}>
-                    Export as CSV
-                  </DropdownMenuItem>
-                </DropdownMenuContent>
-              </DropdownMenu>
-            </div>
-          </CardContent>
-        </Card>
-
-        <div className="flex items-center gap-4 text-sm text-muted-foreground">
-          <span>{filteredLogs.length} log entries</span>
-          {hotReload && (
-            <Badge variant="outline" className="animate-pulse">
-              <RefreshCw className="h-3 w-3 mr-1 animate-spin" />
-              Live
-            </Badge>
-          )}
+          <div className="flex items-center gap-1 ml-auto">
+            <span className="text-[11px] text-muted-foreground">{filteredLogs.length} lines</span>
+            <Button onClick={() => loadLogs()} variant="ghost" size="sm" className="h-7 px-2">
+              <RefreshCw className="h-3 w-3" />
+            </Button>
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="ghost" size="sm" className="h-7 px-2">
+                  <Download className="h-3 w-3" />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end">
+                <DropdownMenuItem onClick={() => exportLogs('txt')} className="text-xs">
+                  export .txt
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => exportLogs('json')} className="text-xs">
+                  export .json
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => exportLogs('csv')} className="text-xs">
+                  export .csv
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+          </div>
         </div>
 
+        {/* New logs notification */}
         {newLogsCount > 0 && (
           <button
             type="button"
             onClick={loadNewLogs}
-            className="w-full flex items-center justify-center gap-2 py-2 px-4 bg-primary/10 hover:bg-primary/20 border border-primary/30 rounded-lg text-primary text-sm font-medium transition-colors"
+            className="flex items-center justify-center gap-2 py-1.5 px-3 bg-primary/10 hover:bg-primary/20 border border-primary/30 text-primary text-xs transition-colors flex-shrink-0"
           >
-            <Bell className="h-4 w-4" />
-            <span>+{newLogsCount} new {newLogsCount === 1 ? 'line' : 'lines'} available</span>
-            <span className="text-primary/70">— Click to load</span>
+            <Bell className="h-3 w-3" />
+            <span>+{newLogsCount} new {newLogsCount === 1 ? 'line' : 'lines'}</span>
+            <span className="text-primary/60">click to load</span>
           </button>
         )}
 
-        <Card className="flex-1 overflow-hidden">
-          <ScrollArea className="h-[calc(100vh-380px)]" ref={scrollRef}>
-            <div className="p-4 space-y-1">
-              {filteredLogs.length === 0 ? (
-                <div className="text-center py-12 text-muted-foreground">
-                  {logs.length === 0 ? 'No logs found' : 'No logs match the current filters'}
-                </div>
-              ) : (
-                filteredLogs.map((log, index) => (
-                  <div
-                    key={`${log.timestamp}-${index}`}
-                    className={`group font-mono text-sm p-2 rounded hover:bg-muted/50 ${
-                      log.level === 'error' ? 'bg-red-500/5' : ''
-                    } ${log.level === 'warning' ? 'bg-yellow-500/5' : ''}`}
-                  >
-                    <button
-                      type="button"
-                      className="flex items-start gap-2 cursor-pointer w-full text-left"
-                      onClick={() => toggleExpand(index)}
-                    >
-                      <div className="flex-shrink-0 mt-0.5">
-                        {getLevelIcon(log.level)}
-                      </div>
-                      {log.timestamp && (
-                        <span className="text-muted-foreground flex-shrink-0 text-xs">
-                          {log.timestamp}
-                        </span>
-                      )}
-                      <Badge
-                        variant="secondary"
-                        className={`${getLevelBadgeColor(log.level)} text-white text-xs flex-shrink-0`}
-                      >
-                        {log.level}
-                      </Badge>
-                      <span
-                        className={`flex-1 break-all ${expanded.has(index) ? '' : 'line-clamp-1'}`}
-                      >
-                        {log.message || log.raw}
-                      </span>
-                      <span className="h-5 w-5 opacity-0 group-hover:opacity-100 flex items-center justify-center">
-                        {expanded.has(index) ? (
-                          <ChevronUp className="h-3 w-3" />
-                        ) : (
-                          <ChevronDown className="h-3 w-3" />
-                        )}
-                      </span>
-                    </button>
-                    {expanded.has(index) && log.message !== log.raw && (
-                      <pre className="mt-2 ml-6 p-2 bg-muted rounded text-xs overflow-x-auto">
-                        {log.raw}
-                      </pre>
-                    )}
-                  </div>
-                ))
-              )}
+        {/* Log entries - Terminal style - This is the only scrollable area */}
+        <div
+          ref={scrollRef}
+          className="flex-1 min-h-0 overflow-auto bg-log-bg border border-border"
+        >
+          {filteredLogs.length === 0 ? (
+            <div className="flex items-center justify-center h-full text-muted-foreground text-xs">
+              {logs.length === 0 ? '// no logs found' : '// no matches'}
             </div>
-          </ScrollArea>
-        </Card>
+          ) : (
+            <div className="p-2 space-y-px">
+              {filteredLogs.map((log, index) => (
+                <div
+                  key={`${log.lineNumber}-${index}`}
+                  className={`group text-[11px] leading-relaxed hover:bg-muted/30 ${
+                    log.level === 'error' ? 'bg-destructive/5' : ''
+                  } ${log.level === 'warning' ? 'bg-warning/5' : ''}`}
+                >
+                  <button
+                    type="button"
+                    className="flex items-start gap-2 w-full text-left px-2 py-0.5"
+                    onClick={() => toggleExpand(index)}
+                  >
+                    {/* Line number */}
+                    <span className="text-log-line-number w-8 text-right flex-shrink-0 select-none">
+                      {log.lineNumber || index + 1}
+                    </span>
+                    {/* Timestamp */}
+                    {log.timestamp && (
+                      <span className="text-muted-foreground flex-shrink-0">
+                        {log.timestamp}
+                      </span>
+                    )}
+                    {/* Level */}
+                    <span className={`${getLevelColor(log.level)} flex-shrink-0 font-medium w-7`}>
+                      {getLevelPrefix(log.level)}
+                    </span>
+                    {/* Message */}
+                    <span className={`flex-1 text-foreground ${expanded.has(index) ? 'whitespace-pre-wrap' : 'truncate'}`}>
+                      {log.message || log.raw}
+                    </span>
+                    {/* Expand indicator */}
+                    <ChevronDown
+                      className={`h-3 w-3 text-muted-foreground opacity-0 group-hover:opacity-100 transition-all flex-shrink-0 ${
+                        expanded.has(index) ? 'rotate-180' : ''
+                      }`}
+                    />
+                  </button>
+                  {/* Raw output */}
+                  {expanded.has(index) && log.message !== log.raw && (
+                    <pre className="ml-12 mr-2 mb-1 p-2 bg-muted/50 text-muted-foreground text-[10px] overflow-x-auto border-l-2 border-border">
+                      {log.raw}
+                    </pre>
+                  )}
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
       </div>
     </AppLayout>
   )

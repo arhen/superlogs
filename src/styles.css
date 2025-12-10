@@ -3,89 +3,153 @@
 
 @custom-variant dark (&:is(.dark *));
 
+/* Terminal-inspired minimalist design with Gruvbox theme */
 body {
   @apply m-0;
-  font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen', 'Ubuntu',
-    'Cantarell', 'Fira Sans', 'Droid Sans', 'Helvetica Neue', sans-serif;
+  font-family: 'JetBrains Mono', 'SF Mono', 'Fira Code', 'Consolas', monospace;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+  font-size: 13px;
+  letter-spacing: -0.01em;
 }
 
-code {
-  font-family: 'JetBrains Mono', source-code-pro, Menlo, Monaco, Consolas, 'Courier New', monospace;
+code, pre, .mono {
+  font-family: 'JetBrains Mono', 'SF Mono', 'Fira Code', 'Consolas', monospace;
 }
 
+/* Gruvbox Light Theme - Default */
 :root {
-  --background: oklch(0.99 0.002 60);
-  --foreground: oklch(0.2 0.02 250);
-  --card: oklch(1 0 0);
-  --card-foreground: oklch(0.2 0.02 250);
-  --popover: oklch(1 0 0);
-  --popover-foreground: oklch(0.2 0.02 250);
-  --primary: oklch(0.65 0.15 35);
-  --primary-foreground: oklch(0.99 0 0);
-  --secondary: oklch(0.96 0.01 60);
-  --secondary-foreground: oklch(0.3 0.02 250);
-  --muted: oklch(0.96 0.008 60);
-  --muted-foreground: oklch(0.5 0.02 250);
-  --accent: oklch(0.94 0.015 35);
-  --accent-foreground: oklch(0.55 0.12 35);
-  --destructive: oklch(0.55 0.22 25);
-  --destructive-foreground: oklch(0.98 0 0);
-  --border: oklch(0.91 0.01 60);
-  --input: oklch(0.91 0.01 60);
-  --ring: oklch(0.65 0.15 35);
-  --success: oklch(0.6 0.15 145);
-  --success-foreground: oklch(0.98 0 0);
-  --warning: oklch(0.75 0.15 80);
-  --warning-foreground: oklch(0.25 0.02 80);
-  --info: oklch(0.6 0.12 250);
-  --info-foreground: oklch(0.98 0 0);
-  --radius: 0.5rem;
-  --sidebar: oklch(0.98 0.005 60);
-  --sidebar-foreground: oklch(0.2 0.02 250);
-  --sidebar-primary: oklch(0.65 0.15 35);
-  --sidebar-primary-foreground: oklch(0.99 0 0);
-  --sidebar-accent: oklch(0.94 0.015 35);
-  --sidebar-accent-foreground: oklch(0.55 0.12 35);
-  --sidebar-border: oklch(0.91 0.01 60);
-  --sidebar-ring: oklch(0.65 0.15 35);
+  /* Gruvbox Light palette */
+  --gruvbox-bg: #fbf1c7;
+  --gruvbox-bg0: #fbf1c7;
+  --gruvbox-bg1: #ebdbb2;
+  --gruvbox-bg2: #d5c4a1;
+  --gruvbox-bg3: #bdae93;
+  --gruvbox-bg4: #a89984;
+  --gruvbox-fg: #3c3836;
+  --gruvbox-fg0: #282828;
+  --gruvbox-fg1: #3c3836;
+  --gruvbox-fg2: #504945;
+  --gruvbox-fg3: #665c54;
+  --gruvbox-fg4: #7c6f64;
+  --gruvbox-red: #cc241d;
+  --gruvbox-green: #98971a;
+  --gruvbox-yellow: #d79921;
+  --gruvbox-blue: #458588;
+  --gruvbox-purple: #b16286;
+  --gruvbox-aqua: #689d6a;
+  --gruvbox-orange: #d65d0e;
+  --gruvbox-gray: #928374;
+
+  --background: #fbf1c7;
+  --foreground: #3c3836;
+  --card: #f9f5d7;
+  --card-foreground: #3c3836;
+  --popover: #f9f5d7;
+  --popover-foreground: #3c3836;
+  --primary: #98971a;
+  --primary-foreground: #fbf1c7;
+  --secondary: #ebdbb2;
+  --secondary-foreground: #504945;
+  --muted: #ebdbb2;
+  --muted-foreground: #7c6f64;
+  --accent: #689d6a;
+  --accent-foreground: #fbf1c7;
+  --destructive: #cc241d;
+  --destructive-foreground: #fbf1c7;
+  --border: #d5c4a1;
+  --input: #d5c4a1;
+  --ring: #98971a;
+  --success: #98971a;
+  --success-foreground: #fbf1c7;
+  --warning: #d79921;
+  --warning-foreground: #3c3836;
+  --info: #458588;
+  --info-foreground: #fbf1c7;
+  --radius: 0.25rem;
+  --sidebar: #f9f5d7;
+  --sidebar-foreground: #504945;
+  --sidebar-primary: #98971a;
+  --sidebar-primary-foreground: #fbf1c7;
+  --sidebar-accent: #ebdbb2;
+  --sidebar-accent-foreground: #3c3836;
+  --sidebar-border: #d5c4a1;
+  --sidebar-ring: #98971a;
+
+  /* Log colors - Gruvbox Light */
+  --log-error: #cc241d;
+  --log-warning: #d79921;
+  --log-info: #458588;
+  --log-debug: #928374;
+  --log-bg: #f2e5bc;
+  --log-line-number: #a89984;
 }
 
+/* Gruvbox Dark Theme */
 .dark {
-  --background: oklch(0.15 0.015 250);
-  --foreground: oklch(0.95 0.01 60);
-  --card: oklch(0.18 0.015 250);
-  --card-foreground: oklch(0.95 0.01 60);
-  --popover: oklch(0.18 0.015 250);
-  --popover-foreground: oklch(0.95 0.01 60);
-  --primary: oklch(0.7 0.14 35);
-  --primary-foreground: oklch(0.15 0.015 250);
-  --secondary: oklch(0.25 0.015 250);
-  --secondary-foreground: oklch(0.9 0.01 60);
-  --muted: oklch(0.25 0.015 250);
-  --muted-foreground: oklch(0.65 0.02 60);
-  --accent: oklch(0.3 0.04 35);
-  --accent-foreground: oklch(0.8 0.1 35);
-  --destructive: oklch(0.45 0.2 25);
-  --destructive-foreground: oklch(0.95 0 0);
-  --border: oklch(0.28 0.015 250);
-  --input: oklch(0.28 0.015 250);
-  --ring: oklch(0.7 0.14 35);
-  --success: oklch(0.55 0.14 145);
-  --success-foreground: oklch(0.95 0 0);
-  --warning: oklch(0.7 0.14 80);
-  --warning-foreground: oklch(0.2 0.02 80);
-  --info: oklch(0.55 0.11 250);
-  --info-foreground: oklch(0.95 0 0);
-  --sidebar: oklch(0.12 0.015 250);
-  --sidebar-foreground: oklch(0.95 0.01 60);
-  --sidebar-primary: oklch(0.7 0.14 35);
-  --sidebar-primary-foreground: oklch(0.15 0.015 250);
-  --sidebar-accent: oklch(0.3 0.04 35);
-  --sidebar-accent-foreground: oklch(0.8 0.1 35);
-  --sidebar-border: oklch(0.28 0.015 250);
-  --sidebar-ring: oklch(0.7 0.14 35);
+  /* Gruvbox Dark palette */
+  --gruvbox-bg: #282828;
+  --gruvbox-bg0: #282828;
+  --gruvbox-bg1: #3c3836;
+  --gruvbox-bg2: #504945;
+  --gruvbox-bg3: #665c54;
+  --gruvbox-bg4: #7c6f64;
+  --gruvbox-fg: #ebdbb2;
+  --gruvbox-fg0: #fbf1c7;
+  --gruvbox-fg1: #ebdbb2;
+  --gruvbox-fg2: #d5c4a1;
+  --gruvbox-fg3: #bdae93;
+  --gruvbox-fg4: #a89984;
+  --gruvbox-red: #fb4934;
+  --gruvbox-green: #b8bb26;
+  --gruvbox-yellow: #fabd2f;
+  --gruvbox-blue: #83a598;
+  --gruvbox-purple: #d3869b;
+  --gruvbox-aqua: #8ec07c;
+  --gruvbox-orange: #fe8019;
+  --gruvbox-gray: #928374;
+
+  --background: #282828;
+  --foreground: #ebdbb2;
+  --card: #1d2021;
+  --card-foreground: #ebdbb2;
+  --popover: #1d2021;
+  --popover-foreground: #ebdbb2;
+  --primary: #b8bb26;
+  --primary-foreground: #282828;
+  --secondary: #3c3836;
+  --secondary-foreground: #bdae93;
+  --muted: #3c3836;
+  --muted-foreground: #a89984;
+  --accent: #8ec07c;
+  --accent-foreground: #282828;
+  --destructive: #fb4934;
+  --destructive-foreground: #282828;
+  --border: #504945;
+  --input: #504945;
+  --ring: #b8bb26;
+  --success: #b8bb26;
+  --success-foreground: #282828;
+  --warning: #fabd2f;
+  --warning-foreground: #282828;
+  --info: #83a598;
+  --info-foreground: #282828;
+  --sidebar: #1d2021;
+  --sidebar-foreground: #bdae93;
+  --sidebar-primary: #b8bb26;
+  --sidebar-primary-foreground: #282828;
+  --sidebar-accent: #3c3836;
+  --sidebar-accent-foreground: #ebdbb2;
+  --sidebar-border: #504945;
+  --sidebar-ring: #b8bb26;
+
+  /* Log colors - Gruvbox Dark */
+  --log-error: #fb4934;
+  --log-warning: #fabd2f;
+  --log-info: #83a598;
+  --log-debug: #928374;
+  --log-bg: #1d2021;
+  --log-line-number: #665c54;
 }
 
 @theme inline {
@@ -114,9 +178,9 @@ code {
   --color-warning-foreground: var(--warning-foreground);
   --color-info: var(--info);
   --color-info-foreground: var(--info-foreground);
-  --radius-sm: calc(var(--radius) - 4px);
-  --radius-md: calc(var(--radius) - 2px);
-  --radius-lg: var(--radius);
+  --radius-sm: calc(var(--radius) - 2px);
+  --radius-md: var(--radius);
+  --radius-lg: calc(var(--radius) + 2px);
   --radius-xl: calc(var(--radius) + 4px);
   --color-sidebar: var(--sidebar);
   --color-sidebar-foreground: var(--sidebar-foreground);
@@ -126,46 +190,90 @@ code {
   --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
   --color-sidebar-border: var(--sidebar-border);
   --color-sidebar-ring: var(--sidebar-ring);
+  
+  /* Log colors */
+  --color-log-error: var(--log-error);
+  --color-log-warning: var(--log-warning);
+  --color-log-info: var(--log-info);
+  --color-log-debug: var(--log-debug);
+  --color-log-bg: var(--log-bg);
+  --color-log-line-number: var(--log-line-number);
 }
 
 @layer base {
   * {
-    @apply border-border outline-ring/50;
+    @apply border-border;
   }
   body {
     @apply bg-background text-foreground;
   }
 }
 
-.log-line {
-  @apply font-mono text-sm leading-relaxed;
+/* Terminal prompt styling */
+.prompt {
+  @apply text-primary;
 }
 
-.log-line-error {
-  @apply bg-destructive/10 text-destructive;
+.prompt::before {
+  content: '❯ ';
+  @apply text-primary;
 }
 
-.log-line-warning {
-  @apply bg-warning/10 text-warning-foreground;
+/* Log level colors */
+.log-error {
+  color: var(--log-error);
 }
 
-.log-line-info {
-  @apply bg-info/10 text-info;
+.log-warning {
+  color: var(--log-warning);
 }
 
-.log-line-debug {
-  @apply text-muted-foreground;
+.log-info {
+  color: var(--log-info);
 }
 
+.log-debug {
+  color: var(--log-debug);
+}
+
+/* Minimal scrollbar */
 ::-webkit-scrollbar {
-  width: 8px;
-  height: 8px;
+  width: 6px;
+  height: 6px;
 }
 
 ::-webkit-scrollbar-track {
-  @apply bg-muted/50 rounded-full;
+  background: transparent;
 }
 
 ::-webkit-scrollbar-thumb {
-  @apply bg-muted-foreground/30 rounded-full hover:bg-muted-foreground/50;
+  background: var(--border);
+  border-radius: 3px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--muted-foreground);
+}
+
+/* Focus styles */
+*:focus-visible {
+  @apply outline-none ring-1 ring-primary ring-offset-1 ring-offset-background;
+}
+
+/* Selection - Gruvbox style */
+::selection {
+  background: var(--primary);
+  color: var(--primary-foreground);
+}
+
+/* Blinking cursor effect */
+@keyframes blink {
+  0%, 50% { opacity: 1; }
+  51%, 100% { opacity: 0; }
+}
+
+.cursor-blink::after {
+  content: '▋';
+  animation: blink 1s step-end infinite;
+  @apply text-primary ml-0.5;
 }

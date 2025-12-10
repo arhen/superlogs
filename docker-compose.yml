@@ -1,0 +1,17 @@
+services:
+  superlogs:
+    build: .
+    container_name: superlogs
+    restart: unless-stopped
+    ports:
+      - "4000:4000"
+    volumes:
+      # Persist SQLite database
+      - ./data:/app/data
+      # Mount supervisor log directories (read-only)
+      - /var/log/supervisor:/var/log/supervisor:ro
+      # Mount supervisor config directory (read-only)  
+      - /etc/supervisor/conf.d:/etc/supervisor/conf.d:ro
+    environment:
+      - NODE_ENV=production
+      - PORT=4000

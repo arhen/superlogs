@@ -1,8 +1,7 @@
 import { createFileRoute, Link } from '@tanstack/react-router'
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { AppLayout } from '@/components/AppLayout'
 import { Button } from '@/components/ui/button'
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import {
   Dialog,
@@ -25,7 +24,7 @@ import {
 } from '@/components/ui/select'
 import { getProjectsWithSupervisors, createProject, deleteProject } from '@/server/api'
 import { toast } from 'sonner'
-import { Plus, Trash2, FolderOpen, Server } from 'lucide-react'
+import { Plus, Trash2, FolderOpen, Server, ChevronRight, Terminal } from 'lucide-react'
 
 export const Route = createFileRoute('/')({
   component: HomePage,
@@ -59,7 +58,7 @@ function HomePage() {
     environment: 'local' as Environment,
   })
 
-  const loadProjects = async () => {
+  const loadProjects = useCallback(async () => {
     try {
       const result = await getProjectsWithSupervisors()
       setProjects(result.projects as Project[])
@@ -68,11 +67,11 @@ function HomePage() {
     } finally {
       setLoading(false)
     }
-  }
+  }, [])
 
   useEffect(() => {
     loadProjects()
-  }, [])
+  }, [loadProjects])
 
   const handleCreateProject = async () => {
     if (!newProject.name.trim()) {
@@ -98,7 +97,7 @@ function HomePage() {
   }
 
   const handleDeleteProject = async (id: number, name: string) => {
-    if (!confirm(`Are you sure you want to delete "${name}"?`)) return
+    if (!confirm(`Delete "${name}"?`)) return
 
     try {
       await deleteProject({ data: { id } })
@@ -109,143 +108,153 @@ function HomePage() {
     }
   }
 
-  const getEnvironmentColor = (env: Environment) => {
-    const colors = {
-      local: 'bg-gray-500',
-      development: 'bg-blue-500',
-      staging: 'bg-yellow-500',
-      production: 'bg-red-500',
+  const getEnvironmentBadge = (env: Environment) => {
+    const variants: Record<Environment, 'default' | 'secondary' | 'warning' | 'error'> = {
+      local: 'secondary',
+      development: 'default',
+      staging: 'warning',
+      production: 'error',
     }
-    return colors[env] || 'bg-gray-500'
+    return variants[env] || 'secondary'
   }
 
   return (
     <AppLayout>
-      <div className="space-y-6">
-        <div className="flex items-center justify-between">
-          <div>
-            <h1 className="text-3xl font-bold">Projects</h1>
-            <p className="text-muted-foreground">Manage your supervisor log projects</p>
+      <div className="h-full flex flex-col gap-4 overflow-hidden">
+        {/* Header */}
+        <div className="flex items-center justify-between flex-shrink-0">
+          <div className="flex items-center gap-2">
+            <FolderOpen className="h-4 w-4 text-primary" />
+            <h1 className="text-sm font-medium">projects</h1>
+            <span className="text-xs text-muted-foreground">({projects.length})</span>
           </div>
           <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
             <DialogTrigger asChild>
-              <Button>
-                <Plus className="h-4 w-4 mr-2" />
-                New Project
+              <Button size="sm" className="h-7 text-xs">
+                <Plus className="h-3 w-3 mr-1" />
+                new
               </Button>
             </DialogTrigger>
             <DialogContent>
               <DialogHeader>
-                <DialogTitle>Create Project</DialogTitle>
-                <DialogDescription>Add a new project to organize your supervisors</DialogDescription>
+                <DialogTitle className="text-sm">create project</DialogTitle>
+                <DialogDescription className="text-xs">
+                  add a new project to organize supervisors
+                </DialogDescription>
               </DialogHeader>
-              <div className="space-y-4 py-4">
-                <div className="space-y-2">
-                  <Label htmlFor="name">Name</Label>
+              <div className="space-y-3 py-3">
+                <div className="space-y-1.5">
+                  <Label htmlFor="name" className="text-xs">name</Label>
                   <Input
                     id="name"
                     value={newProject.name}
                     onChange={(e) => setNewProject({ ...newProject, name: e.target.value })}
-                    placeholder="My Project"
+                    placeholder="my-project"
+                    className="h-8 text-xs"
                   />
                 </div>
-                <div className="space-y-2">
-                  <Label htmlFor="description">Description (optional)</Label>
+                <div className="space-y-1.5">
+                  <Label htmlFor="description" className="text-xs">description</Label>
                   <Textarea
                     id="description"
                     value={newProject.description}
                     onChange={(e) => setNewProject({ ...newProject, description: e.target.value })}
-                    placeholder="Project description..."
+                    placeholder="optional description..."
+                    className="text-xs min-h-[60px]"
                   />
                 </div>
-                <div className="space-y-2">
-                  <Label htmlFor="environment">Environment</Label>
+                <div className="space-y-1.5">
+                  <Label htmlFor="environment" className="text-xs">environment</Label>
                   <Select
                     value={newProject.environment}
                     onValueChange={(value) => setNewProject({ ...newProject, environment: value as Environment })}
                   >
-                    <SelectTrigger>
+                    <SelectTrigger className="h-8 text-xs">
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="local">Local</SelectItem>
-                      <SelectItem value="development">Development</SelectItem>
-                      <SelectItem value="staging">Staging</SelectItem>
-                      <SelectItem value="production">Production</SelectItem>
+                      <SelectItem value="local" className="text-xs">local</SelectItem>
+                      <SelectItem value="development" className="text-xs">development</SelectItem>
+                      <SelectItem value="staging" className="text-xs">staging</SelectItem>
+                      <SelectItem value="production" className="text-xs">production</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
               </div>
               <DialogFooter>
-                <Button variant="outline" onClick={() => setDialogOpen(false)}>
-                  Cancel
+                <Button variant="ghost" size="sm" onClick={() => setDialogOpen(false)} className="text-xs">
+                  cancel
                 </Button>
-                <Button onClick={handleCreateProject}>Create</Button>
+                <Button size="sm" onClick={handleCreateProject} className="text-xs">
+                  create
+                </Button>
               </DialogFooter>
             </DialogContent>
           </Dialog>
         </div>
 
+        {/* Content */}
         {loading ? (
-          <div className="flex items-center justify-center py-12">
-            <div className="animate-pulse text-muted-foreground">Loading projects...</div>
+          <div className="flex items-center justify-center flex-1">
+            <div className="text-primary text-xs">
+              <span className="animate-pulse">_</span> loading...
+            </div>
           </div>
         ) : projects.length === 0 ? (
-          <Card>
-            <CardContent className="flex flex-col items-center justify-center py-12">
-              <FolderOpen className="h-12 w-12 text-muted-foreground mb-4" />
-              <h3 className="text-lg font-medium mb-2">No projects yet</h3>
-              <p className="text-muted-foreground text-center mb-4">
-                Create your first project to start monitoring supervisor logs
-              </p>
-              <Button onClick={() => setDialogOpen(true)}>
-                <Plus className="h-4 w-4 mr-2" />
-                Create Project
-              </Button>
-            </CardContent>
-          </Card>
+          <div className="border border-dashed border-border flex-1 flex flex-col items-center justify-center">
+            <Terminal className="h-8 w-8 text-muted-foreground mb-3" />
+            <p className="text-xs text-muted-foreground mb-3">no projects yet</p>
+            <Button size="sm" onClick={() => setDialogOpen(true)} className="text-xs h-7">
+              <Plus className="h-3 w-3 mr-1" />
+              create project
+            </Button>
+          </div>
         ) : (
-          <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+          <div className="border border-border divide-y divide-border flex-1 min-h-0 overflow-auto">
             {projects.map((project) => (
-              <Card key={project.id} className="hover:shadow-md transition-shadow">
-                <CardHeader className="pb-2">
-                  <div className="flex items-start justify-between">
-                    <div className="space-y-1">
-                      <CardTitle className="text-lg">
-                        <Link
-                          to="/projects/$projectId"
-                          params={{ projectId: String(project.id) }}
-                          className="hover:underline"
-                        >
-                          {project.name}
-                        </Link>
-                      </CardTitle>
-                      {project.description && (
-                        <CardDescription className="line-clamp-2">{project.description}</CardDescription>
-                      )}
+              <div
+                key={project.id}
+                className="group flex items-center gap-3 px-3 py-2.5 hover:bg-muted/30 transition-colors"
+              >
+                <Link
+                  to="/projects/$projectId"
+                  params={{ projectId: String(project.id) }}
+                  className="flex-1 flex items-center gap-3 min-w-0"
+                >
+                  <FolderOpen className="h-3.5 w-3.5 text-muted-foreground flex-shrink-0" />
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-2">
+                      <span className="text-sm font-medium truncate">{project.name}</span>
+                      <Badge variant={getEnvironmentBadge(project.environment)} className="text-[10px]">
+                        {project.environment}
+                      </Badge>
                     </div>
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      className="text-muted-foreground hover:text-destructive"
-                      onClick={() => handleDeleteProject(project.id, project.name)}
-                    >
-                      <Trash2 className="h-4 w-4" />
-                    </Button>
+                    {project.description && (
+                      <p className="text-[11px] text-muted-foreground truncate mt-0.5">
+                        {project.description}
+                      </p>
+                    )}
                   </div>
-                </CardHeader>
-                <CardContent>
-                  <div className="flex items-center justify-between">
-                    <Badge variant="secondary" className={`${getEnvironmentColor(project.environment)} text-white`}>
-                      {project.environment}
-                    </Badge>
-                    <div className="flex items-center text-sm text-muted-foreground">
-                      <Server className="h-4 w-4 mr-1" />
-                      {project.supervisors?.length || 0} supervisor{(project.supervisors?.length || 0) !== 1 ? 's' : ''}
-                    </div>
+                  <div className="flex items-center gap-3 text-[11px] text-muted-foreground">
+                    <span className="flex items-center gap-1">
+                      <Server className="h-3 w-3" />
+                      {project.supervisors?.length || 0}
+                    </span>
+                    <ChevronRight className="h-3 w-3 opacity-0 group-hover:opacity-100 transition-opacity" />
                   </div>
-                </CardContent>
-              </Card>
+                </Link>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="h-6 w-6 p-0 opacity-0 group-hover:opacity-100 text-muted-foreground hover:text-destructive transition-all"
+                  onClick={(e) => {
+                    e.preventDefault()
+                    handleDeleteProject(project.id, project.name)
+                  }}
+                >
+                  <Trash2 className="h-3 w-3" />
+                </Button>
+              </div>
             ))}
           </div>
         )}

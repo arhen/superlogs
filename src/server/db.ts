@@ -1,6 +1,5 @@
 import { Database } from 'bun:sqlite';
 import path from 'path';
-import bcrypt from 'bcryptjs';
 import fs from 'fs';
 
 const DB_PATH = process.env.DB_PATH || path.join(process.cwd(), 'data', 'supervisor-logs.db');
@@ -62,13 +61,7 @@ db.exec(`
   CREATE INDEX IF NOT EXISTS idx_sessions_expires_at ON sessions(expires_at);
 `);
 
-// Create default admin user if none exists
-const userCount = db.query('SELECT COUNT(*) as count FROM users').get() as { count: number };
-if (userCount.count === 0) {
-  const passwordHash = bcrypt.hashSync('admin', 10);
-  db.query('INSERT INTO users (username, password_hash) VALUES (?, ?)').run('admin', passwordHash);
-  console.log('Created default admin user (username: admin, password: admin)');
-}
+// No default user - use `bun run create-user` to create users after deployment
 
 export interface User {
   id: number;
