@@ -10,18 +10,16 @@ if (!fs.existsSync(dataDir)) {
   fs.mkdirSync(dataDir, { recursive: true });
 }
 
-// Use globalThis to ensure singleton across bundler chunks
-const GLOBAL_DB_KEY = '__superlogs_db__';
+// Database singleton - lazy initialization
+let _db: Database | null = null;
 
 function getDb(): Database {
-  // Check if already initialized in global scope
-  if (!(globalThis as Record<string, unknown>)[GLOBAL_DB_KEY]) {
-    const db = new Database(DB_PATH);
-    db.exec('PRAGMA foreign_keys = ON');
-    initializeSchema(db);
-    (globalThis as Record<string, unknown>)[GLOBAL_DB_KEY] = db;
+  if (!_db) {
+    _db = new Database(DB_PATH);
+    _db.exec('PRAGMA foreign_keys = ON');
+    initializeSchema(_db);
   }
-  return (globalThis as Record<string, unknown>)[GLOBAL_DB_KEY] as Database;
+  return _db;
 }
 
 function initializeSchema(db: Database) {
