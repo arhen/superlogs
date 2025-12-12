@@ -42,9 +42,14 @@ This approach:
 set -e
 
 # Fix permissions for the data directory
+# This ensures the 'app' user can read/write the database
 if [ -d "/app/data" ]; then
   echo "Fixing permissions for /app/data..."
-  chown -R app:app /app/data
+  if ! chown -R app:app /app/data; then
+    echo "ERROR: Failed to change ownership of /app/data" >&2
+    exit 1
+  fi
+  echo "Permissions fixed successfully"
 fi
 
 # Switch to app user and execute the command
@@ -78,6 +83,7 @@ docker-compose logs -f
 You should see in the logs:
 ```
 Fixing permissions for /app/data...
+Permissions fixed successfully
 Starting application as user 'app'...
 [INFO] Loading static assets from ./dist/client...
 [SUCCESS] TanStack Start handler initialized
@@ -93,8 +99,13 @@ docker-compose exec superlogs ls -la /app/data
 
 Should show:
 ```
+total 60
+drwxr-xr-x 2 app app  4096 Dec 12 13:05 .
+drwxr-xr-x 1 app app  4096 Dec 12 13:05 ..
 -rw-r--r-- 1 app app 53248 Dec 12 13:05 supervisor-logs.db
 ```
+
+All files and the directory itself should be owned by `app:app`.
 
 ## Migration from PM2
 

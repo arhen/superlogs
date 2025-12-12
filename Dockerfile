@@ -42,6 +42,9 @@ RUN mkdir -p /app/data
 
 # Set ownership of application files to app user
 RUN chown -R app:app /app
+# Note: The entrypoint script remains root-owned intentionally.
+# It needs root privileges to fix volume mount permissions at runtime
+# before switching to the app user for security.
 
 # Set environment
 ENV NODE_ENV=production
