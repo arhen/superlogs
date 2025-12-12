@@ -5,7 +5,11 @@ set -e
 # This ensures the 'app' user can read/write the database
 if [ -d "/app/data" ]; then
   echo "Fixing permissions for /app/data..."
-  chown -R app:app /app/data
+  if ! chown -R app:app /app/data; then
+    echo "ERROR: Failed to change ownership of /app/data" >&2
+    exit 1
+  fi
+  echo "Permissions fixed successfully"
 fi
 
 # Switch to app user and execute the command

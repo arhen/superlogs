@@ -40,6 +40,9 @@ RUN chmod +x /usr/local/bin/docker-entrypoint.sh
 # Create data directory for SQLite
 RUN mkdir -p /app/data
 
+# Set ownership of application files to app user
+RUN chown -R app:app /app
+
 # Set environment
 ENV NODE_ENV=production
 ENV PORT=4000
@@ -47,5 +50,5 @@ ENV PORT=4000
 EXPOSE 4000
 
 # Use entrypoint script to fix permissions and switch to app user
-ENTRYPOINT ["docker-entrypoint.sh"]
+ENTRYPOINT ["/usr/local/bin/docker-entrypoint.sh"]
 CMD ["bun", "run", "start"]
